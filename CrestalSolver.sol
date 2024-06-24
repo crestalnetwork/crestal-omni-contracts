@@ -53,17 +53,24 @@ contract CrestalSolver {
     //  data should be encoded base64 ChainRequestParam json string
     //  example: {"types":["DA"],"uptime":0,"latency":0,"throughput":20,"error_rate":0.1,"cost":4,"init_cost":0,"maintenance_cost":0,"extra_attribute":""}
     //    associated base64 string: eyJ0eXBlcyI6WyJEQSJdLCJ1cHRpbWUiOjAsImxhdGVuY3kiOjAsInRocm91Z2hwdXQiOjIwLCJlcnJvcl9yYXRlIjowLjEsImNvc3QiOjQsImluaXRfY29zdCI6MCwibWFpbnRlbmFuY2VfY29zdCI6MCwiZXh0cmFfYXR0cmlidXRlIjoiIn0=
-    //  type ChainRequestParam struct {
-    //        Types           []string `json:"types"`     types: DA, Compute, Indexing, Storage
-    //        UpTime          float64  `json:"uptime"`
-    //        Latency         float64  `json:"latency"`
-    //        Throughput      float64  `json:"throughput"`
-    //        ErrorRate       float64  `json:"error_rate"`
-    //        Cost            float64  `json:"cost"`
-    //        InitCost        float64  `json:"init_cost"`
-    //        MaintenanceCost float64  `json:"maintenance_cost"`
-    //        ExtraAttribute  string   `json:"extra_attribute"`
-    //   }
+//        type DAProposal struct {
+//            ID              int     `json:"id,omitempty" example:"1"`
+//            DAName          string  `json:"da_name,omitempty" example:"celestia"`
+//            Latency         float64 `json:"latency"`
+//            MaxThroughput   float64 `json:"max_throughput,omitempty" example:"10.5"` // max throughput unit: mb/s
+//            FinalityTime    float64 `json:"finality_time,omitempty" example:"2.0"`   // block confirmation time in second
+//            BlockTime       float64 `json:"block_time,omitempty" example:"10"`
+//            CostPerBlock    float64 `json:"cost_per_block,omitempty" `
+//            SendBlobLatency float64 `json:"send_blob_latency,omitempty" `
+//            demo : highly recommend use above field to do recommendation
+//
+//            UpTime          float64        `json:"uptime,omitempty" example:"10"` // SLA
+//            ErrorRate       float64        `json:"error_rate,omitempty" example:"0.02"`
+//            Cost            float64        `json:"cost,omitempty" example:"10"`
+//            InitCost        float64        `json:"init_cost,omitempty"`
+//            MaintenanceCost float64        `json:"maintenance_cost,omitempty"`
+//            ExtraAttribute  datatypes.JSON `json:"extra_attribute,omitempty" gorm:"type:json"`
+//    }
 
     function createProposalRequest(string memory data, string memory serverURL) public returns (bytes32 requestID) {
         // generate unique hash
