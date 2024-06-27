@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.17;
 
-contract CrestalSolver {
+contract blueprint {
     struct Solver {
         // string proposalHash;
         uint256 reputation;
