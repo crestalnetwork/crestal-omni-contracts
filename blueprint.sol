@@ -68,24 +68,14 @@ contract blueprint {
     // issue RequestProposal
     //  data should be encoded base64 ChainRequestParam json string
     //  example: {"types":["DA"],"uptime":0,"latency":0,"throughput":20,"error_rate":0.1,"cost":4,"init_cost":0,"maintenance_cost":0,"extra_attribute":""}
-    //    associated base64 string: eyJ0eXBlcyI6WyJEQSJdLCJ1cHRpbWUiOjAsImxhdGVuY3kiOjAsInRocm91Z2hwdXQiOjIwLCJlcnJvcl9yYXRlIjowLjEsImNvc3QiOjQsImluaXRfY29zdCI6MCwibWFpbnRlbmFuY2VfY29zdCI6MCwiZXh0cmFfYXR0cmlidXRlIjoiIn0=
-//        type DAProposal struct {
-//            ID              int     `json:"id,omitempty" example:"1"`
-//            DAName          string  `json:"da_name,omitempty" example:"celestia"`
-//            Latency         float64 `json:"latency"`
-//            MaxThroughput   float64 `json:"max_throughput,omitempty" example:"10.5"` // max throughput unit: mb/s
-//            FinalityTime    float64 `json:"finality_time,omitempty" example:"2.0"`   // block confirmation time in second
-//            BlockTime       float64 `json:"block_time,omitempty" example:"10"`
-//            CostPerBlock    float64 `json:"cost_per_block,omitempty" `
-//            SendBlobLatency float64 `json:"send_blob_latency,omitempty" `
-//            demo : highly recommend use above field to do recommendation
-//
-//            UpTime          float64        `json:"uptime,omitempty" example:"10"` // SLA
-//            ErrorRate       float64        `json:"error_rate,omitempty" example:"0.02"`
-//            Cost            float64        `json:"cost,omitempty" example:"10"`
-//            InitCost        float64        `json:"init_cost,omitempty"`
-//            MaintenanceCost float64        `json:"maintenance_cost,omitempty"`
-//            ExtraAttribute  datatypes.JSON `json:"extra_attribute,omitempty" gorm:"type:json"`
+    //   associated base64 string: eyJ0eXBlcyI6WyJEQSJdLCJ1cHRpbWUiOjAsImxhdGVuY3kiOjAsInRocm91Z2hwdXQiOjIwLCJlcnJvcl9yYXRlIjowLjEsImNvc3QiOjQsImluaXRfY29zdCI6MCwibWFpbnRlbmFuY2VfY29zdCI6MCwiZXh0cmFfYXR0cmlidXRlIjoiIn0=
+//        type ChainRequestParam struct {
+//            // lots of filed coped from DAInfo
+//            Types            []string `json:"types"`
+//            DAProposal                // Embed DAProposal
+//            IndexingProposal          // Embed IndexingProposal
+//            StorageProposal           // Embed StorageProposal
+//            ComputeProposal           // Embed ComputeProposal
 //    }
 
     function createProposalRequest(string memory base64RecParam, string memory serverURL) public returns (bytes32 requestID) {
@@ -105,7 +95,15 @@ contract blueprint {
         emit RequestProposal(msg.sender,messageHash,base64RecParam,serverURL);
 
     }
-
+//   ex base64Propsal: eyJ0eXBlIjoiREEiLCJsYXRlbmN5Ijo1LCJtYXhfdGhyb3VnaHB1dCI6MjAsImZpbmFsaXR5X3RpbWUiOjEwLCJibG9ja190aW1lIjo1LCJjcmVhdGVkX2F0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQ
+//        type ChainRequestParam struct {
+//    // lots of filed coped from DAInfo
+//            Type             string `json:"type"`
+//            DAProposal              // Embed DAProposal
+//            IndexingProposal        // Embed IndexingProposal
+//            StorageProposal         // Embed StorageProposal
+//            ComputeProposal         // Embed ComputeProposal
+//    }
     function createDeploymentRequest(address solverAddress,string memory base64Proposal, string memory serverURL) public returns (bytes32 requestID){
         require (bytes(serverURL).length > 0, "server URL is empty");
         require (bytes(base64Proposal).length >  0, "base64Proposal is empty");
