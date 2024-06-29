@@ -3,50 +3,66 @@
 pragma solidity ^0.8.17;
 
 contract blueprint {
-    struct Solver {
-        // string proposalHash;
-        uint256 reputation;
+
+    enum Status {
+        Init,
+        Issued,
+        Pickup,
+        Deploying,
+        Deployed,
+        GenerateProof
     }
 
+    struct DeploymentStatus {
+        Status status;
+        address deployWorkerAddr;
+    }
+
+
     bytes32 private messageHash;
-    mapping(address => bytes32) public latestRequestID;
-    mapping (address => Solver) public solverReputation;
+    mapping(address => bytes32) public latestProposalRequestID;
+    mapping(address => bytes32) public latestDeploymentRequestID;
+    mapping (address => uint256) public solverReputation;
+    mapping (address => uint256) public workerReputation;
+    mapping (bytes32 => DeploymentStatus) public requestDeploymentStatus;
 
     uint256 public factor;
-    uint256 public totalRequest;
-    event RequestProposal(address indexed walletAddress, bytes32 indexed messageHash, string data, string serverURL);
+    uint256 public totalProposalRequest;
+    uint256 public totalDeploymentRequest;
+
+    event RequestProposal(address indexed walletAddress, bytes32 indexed messageHash, string base64RecParam, string serverURL);
+    event RequestDeployment(address indexed walletAddress, bytes32 indexed messageHash,string base64Proposal, string serverURL);
 
     constructor() {
         // set the factor, used for float type calculation
         factor = 10000;
-        totalRequest++;
+        totalProposalRequest = 0;
+        totalDeploymentRequest = 0;
     }
     // get solver reputation
-     function getReputation(address addr) public view returns (uint256) {
-        return solverReputation[addr].reputation;
-     }
+    function getReputation(address addr) public view returns (uint256) {
+        return solverReputation[addr];
+    }
 
-     // set solver reputation
-     function setReputation(address solverAddr) public returns (uint256 reputation) {
+    // set solver reputation
+    function setReputation(address addr) private returns (uint256 reputation) {
         // get the solver reputation
-        Solver memory solver;
-        solver = solverReputation[solverAddr];
+        // uint256 reputation;
+        reputation = solverReputation[addr];
 
-        if (solver.reputation <  6 * factor ) {
-            solver.reputation += factor;
+        if (reputation <  6 * factor ) {
+            reputation += factor;
         } else {
-            if (totalRequest > 1000) {
-                 solver.reputation +=  (solver.reputation - 6 * factor) / totalRequest;
+            if (totalProposalRequest > 1000) {
+                reputation +=  (reputation - 6 * factor) / totalProposalRequest;
             } else {
-                 solver.reputation +=  (solver.reputation - 6 * factor) / 1000;
+                reputation +=  (reputation - 6 * factor) / 1000;
             }
         }
 
-        reputation = solver.reputation;
+        solverReputation[addr] = reputation;
 
-        solverReputation[solverAddr] = solver;
-
-     }
+    }
 
 
     // issue RequestProposal
@@ -72,28 +88,80 @@ contract blueprint {
 //            ExtraAttribute  datatypes.JSON `json:"extra_attribute,omitempty" gorm:"type:json"`
 //    }
 
-    function createProposalRequest(string memory data, string memory serverURL) public returns (bytes32 requestID) {
-        // generate unique hash
-        require (bytes(serverURL).length > 0, "server URL is empty");
-        require (bytes(data).length >  0, "data is empty");
+    function createProposalRequest(string memory base64RecParam, string memory serverURL) public returns (bytes32 requestID) {
 
-        messageHash = keccak256(abi.encodePacked(block.timestamp,msg.sender));
+        require (bytes(serverURL).length > 0, "server URL is empty");
+        require (bytes(base64RecParam).length >  0, "base64RecParam is empty");
+
+        // generate unique hash
+        messageHash = keccak256(abi.encodePacked(block.timestamp,msg.sender,base64RecParam));
 
         requestID = messageHash;
 
-        latestRequestID[msg.sender] = requestID;
+        latestProposalRequestID[msg.sender] = requestID;
 
-        totalRequest++;
+        totalProposalRequest++;
 
-        emit RequestProposal(msg.sender,messageHash,data,serverURL);
+        emit RequestProposal(msg.sender,messageHash,base64RecParam,serverURL);
 
     }
 
+    function createDeploymentRequest(address solverAddress,string memory base64Proposal, string memory serverURL) public returns (bytes32 requestID){
+        require (bytes(serverURL).length > 0, "server URL is empty");
+        require (bytes(base64Proposal).length >  0, "base64Proposal is empty");
 
-   // get latest reqeust id
-   function getlatestRequstID(address addr) public view returns (bytes32) {
+        // generate unique message hash
+        messageHash = keccak256(abi.encodePacked(block.timestamp,msg.sender,base64Proposal));
 
-      return latestRequestID[addr];
-   }
+        requestID = messageHash;
+
+        latestDeploymentRequestID[msg.sender] = requestID;
+
+        totalDeploymentRequest++;
+
+
+        // init deployment status, not picked by any worker
+        DeploymentStatus memory deploymentStatus;
+        deploymentStatus.status = Status.Issued;
+
+        requestDeploymentStatus[requestID] = deploymentStatus;
+
+        // set solver reputation
+        setReputation(solverAddress);
+
+        emit RequestDeployment(msg.sender,messageHash, base64Proposal,serverURL);
+
+    }
+
+    function submitDeploymentRequest(bytes32 requestID) public returns (bool isAccepted) {
+        require (requestID.length > 0, "request ID is empty");
+        require(requestDeploymentStatus[requestID].status != Status.Init,"request ID not exit");
+        require(requestDeploymentStatus[requestID].status != Status.Pickup,"request ID already pick by another worker, try different request id");
+
+        // currently, do first come, first server, will do a better way in the future
+        requestDeploymentStatus[requestID].status = Status.Pickup;
+        requestDeploymentStatus[requestID].deployWorkerAddr = msg.sender;
+
+        isAccepted = true;
+    }
+
+
+    // get latest deployment status
+    function getDeploymentStatus(bytes32 requestID) public view returns (Status,address)  {
+        return (requestDeploymentStatus[requestID].status,requestDeploymentStatus[requestID].deployWorkerAddr);
+    }
+
+    // get latest proposal request id
+    function getLatestProposalRequestID(address addr) public view returns (bytes32) {
+
+        return latestProposalRequestID[addr];
+    }
+
+    // get latest deployment request id
+    function getLatestDeploymentRequestID(address addr) public view returns (bytes32) {
+
+        return latestDeploymentRequestID[addr];
+    }
+
 
 }
