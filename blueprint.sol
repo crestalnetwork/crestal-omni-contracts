@@ -31,7 +31,7 @@ contract blueprint {
     uint256 public totalDeploymentRequest;
 
     event RequestProposal(address indexed walletAddress, bytes32 indexed messageHash, string base64RecParam, string serverURL);
-    event RequestDeployment(address indexed walletAddress, bytes32 indexed messageHash,string base64Proposal, string serverURL);
+    event RequestDeployment(address indexed solverAddress, bytes32 indexed messageHash,string base64Proposal, string serverURL);
 
     constructor() {
         // set the factor, used for float type calculation
@@ -129,7 +129,7 @@ contract blueprint {
         // set solver reputation
         setReputation(solverAddress);
 
-        emit RequestDeployment(msg.sender,messageHash, base64Proposal,serverURL);
+        emit RequestDeployment(solverAddress,messageHash, base64Proposal,serverURL);
 
     }
 
