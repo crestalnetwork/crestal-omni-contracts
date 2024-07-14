@@ -32,6 +32,7 @@ contract blueprint {
 
     event RequestProposal(address indexed walletAddress, bytes32 indexed messageHash, string base64RecParam, string serverURL);
     event RequestDeployment(address indexed solverAddress, bytes32 indexed messageHash,string base64Proposal, string serverURL);
+    event AcceptDeployment(bytes32 indexed requestID, address indexed workerAddress);
 
     constructor() {
         // set the factor, used for float type calculation
@@ -141,6 +142,8 @@ contract blueprint {
         requestDeploymentStatus[requestID].deployWorkerAddr = msg.sender;
 
         isAccepted = true;
+
+        emit AcceptDeployment(requestID, requestDeploymentStatus[requestID].deployWorkerAddr);
     }
 
 
