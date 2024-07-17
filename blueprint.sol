@@ -10,7 +10,7 @@ contract blueprint {
         Pickup,
         Deploying,
         Deployed,
-        GenerateProof
+        GeneratedProof
     }
 
     struct DeploymentStatus {
@@ -25,6 +25,7 @@ contract blueprint {
     mapping (address => uint256) public solverReputation;
     mapping (address => uint256) public workerReputation;
     mapping (bytes32 => DeploymentStatus) public requestDeploymentStatus;
+    mapping (bytes32 => string) private deploymentProof;
 
     uint256 public factor;
     uint256 public totalProposalRequest;
@@ -33,6 +34,7 @@ contract blueprint {
     event RequestProposal(address indexed walletAddress, bytes32 indexed messageHash, string base64RecParam, string serverURL);
     event RequestDeployment(address indexed solverAddress, bytes32 indexed messageHash,string base64Proposal, string serverURL);
     event AcceptDeployment(bytes32 indexed requestID, address indexed workerAddress);
+    event GeneratedProofOfDeployment(bytes32 indexed requestID, string base64DeploymentProof);
 
     constructor() {
         // set the factor, used for float type calculation
@@ -129,6 +131,22 @@ contract blueprint {
         setReputation(solverAddress);
 
         emit RequestDeployment(solverAddress,messageHash, base64Proposal,serverURL);
+
+    }
+
+
+    function submitProofOfDeployment(bytes32 requestID, string memory proofBase64) public{
+        require (requestID.length > 0, "request ID is empty");
+        require(requestDeploymentStatus[requestID].status != Status.Init,"request ID not exit");
+        require(requestDeploymentStatus[requestID].deployWorkerAddr == msg.sender,"wrong worker address");
+
+        // set deployment status into generatedProof
+        requestDeploymentStatus[requestID].status = Status.GeneratedProof;
+
+        // save deployment proof to mapping
+        deploymentProof[requestID] = proofBase64;
+
+        emit GeneratedProofOfDeployment(requestID, proofBase64);
 
     }
 
