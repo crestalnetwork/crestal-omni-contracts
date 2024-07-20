@@ -26,13 +26,17 @@ contract blueprint {
     mapping (address => uint256) public workerReputation;
     mapping (bytes32 => DeploymentStatus) public requestDeploymentStatus;
     mapping (bytes32 => string) private deploymentProof;
+    mapping (bytes32 => address) private requestSolver;
+    mapping (bytes32 => address) private requestWorker;
 
     uint256 public factor;
     uint256 public totalProposalRequest;
     uint256 public totalDeploymentRequest;
 
     event RequestProposal(address indexed walletAddress, bytes32 indexed messageHash, string base64RecParam, string serverURL);
+    event RequestPrivateProposal(address indexed walletAddress, address privateSolverAddress, bytes32 messageHash, string base64RecParam, string serverURL);
     event RequestDeployment(address indexed walletAddress,address indexed solverAddress, bytes32 indexed messageHash,string base64Proposal, string serverURL);
+    event RequestPrivateDeployment(address indexed walletAddress, address privateWorkerAddress, address indexed solverAddress, bytes32 messageHash, string base64Proposal, string serverURL);
     event AcceptDeployment(bytes32 indexed requestID, address indexed workerAddress);
     event GeneratedProofOfDeployment(bytes32 indexed requestID, string base64DeploymentProof);
 
@@ -98,6 +102,27 @@ contract blueprint {
         emit RequestProposal(msg.sender,messageHash,base64RecParam,serverURL);
 
     }
+
+    function createPrivateProposalRequest(address privateSolverAddress,string memory base64RecParam, string memory serverURL) public returns (bytes32 requestID) {
+        require (bytes(serverURL).length > 0, "server URL is empty");
+        require (bytes(base64RecParam).length >  0, "base64RecParam is empty");
+
+        // generate unique hash
+        messageHash = keccak256(abi.encodePacked(block.timestamp,msg.sender,base64RecParam));
+
+        requestID = messageHash;
+
+        latestProposalRequestID[msg.sender] = requestID;
+
+        totalProposalRequest++;
+
+        // set request id associated private solver
+        requestSolver[requestID] = privateSolverAddress;
+
+        emit RequestPrivateProposal(msg.sender,privateSolverAddress, messageHash,base64RecParam,serverURL);
+
+    }
+
 //   ex base64Propsal: eyJ0eXBlIjoiREEiLCJsYXRlbmN5Ijo1LCJtYXhfdGhyb3VnaHB1dCI6MjAsImZpbmFsaXR5X3RpbWUiOjEwLCJibG9ja190aW1lIjo1LCJjcmVhdGVkX2F0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQ
 //        type ChainRequestParam struct {
 //    // lots of filed coped from DAInfo
@@ -134,6 +159,41 @@ contract blueprint {
 
     }
 
+    function createPrivateDeploymentRequest(bytes32 proposalRequestID, address privateWorkerAddress, string memory base64Proposal, string memory serverURL) public returns (bytes32 requestID) {
+        require (proposalRequestID.length > 0, "proposalRequestID is empty");
+        require (bytes(serverURL).length > 0, "server URL is empty");
+        require (bytes(base64Proposal).length > 0, "base64Proposal is empty");
+
+        // get proposalRequestID associated solver address
+        address solver;
+        solver = requestSolver[proposalRequestID];
+
+        require(solver != address(0),"proposalRequestID not exit");
+
+        // generate unique message hash
+        messageHash = keccak256(abi.encodePacked(block.timestamp,msg.sender,base64Proposal));
+
+        requestID = messageHash;
+
+        latestDeploymentRequestID[msg.sender] = requestID;
+
+        totalDeploymentRequest++;
+
+        // set solver reputation
+        setReputation(solver);
+
+        // pick up deployment status since this is private deployment request, which can be picked only by refered worker
+        DeploymentStatus memory deploymentStatus;
+        deploymentStatus.status = Status.Pickup;
+        deploymentStatus.deployWorkerAddr = privateWorkerAddress;
+
+        requestDeploymentStatus[requestID] = deploymentStatus;
+
+        emit RequestPrivateDeployment(msg.sender,privateWorkerAddress,solver,messageHash, base64Proposal,serverURL);
+
+        // emit accept deployment event since this deployment request is accepted by blueprint
+        emit AcceptDeployment(requestID, privateWorkerAddress);
+    }
 
     function submitProofOfDeployment(bytes32 requestID, string memory proofBase64) public{
         require (requestID.length > 0, "request ID is empty");
