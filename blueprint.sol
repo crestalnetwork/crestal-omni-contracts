@@ -159,16 +159,12 @@ contract blueprint {
 
     }
 
-    function createPrivateDeploymentRequest(bytes32 proposalRequestID, address privateWorkerAddress, string memory base64Proposal, string memory serverURL) public returns (bytes32 requestID) {
-        require (proposalRequestID.length > 0, "proposalRequestID is empty");
+    function createPrivateDeploymentRequest(address solverAddress, address privateWorkerAddress, string memory base64Proposal, string memory serverURL) public returns (bytes32 requestID) {
+
         require (bytes(serverURL).length > 0, "server URL is empty");
         require (bytes(base64Proposal).length > 0, "base64Proposal is empty");
 
-        // get proposalRequestID associated solver address
-        address solver;
-        solver = requestSolver[proposalRequestID];
-
-        require(solver != address(0),"proposalRequestID not exit");
+        require(solverAddress != address(0),"solverAddress not validate");
 
         // generate unique message hash
         messageHash = keccak256(abi.encodePacked(block.timestamp,msg.sender,base64Proposal));
@@ -180,7 +176,7 @@ contract blueprint {
         totalDeploymentRequest++;
 
         // set solver reputation
-        setReputation(solver);
+        setReputation(solverAddress);
 
         // pick up deployment status since this is private deployment request, which can be picked only by refered worker
         DeploymentStatus memory deploymentStatus;
@@ -189,7 +185,7 @@ contract blueprint {
 
         requestDeploymentStatus[requestID] = deploymentStatus;
 
-        emit RequestPrivateDeployment(msg.sender,privateWorkerAddress,solver,messageHash, base64Proposal,serverURL);
+        emit RequestPrivateDeployment(msg.sender,privateWorkerAddress,solverAddress,messageHash, base64Proposal,serverURL);
 
         // emit accept deployment event since this deployment request is accepted by blueprint
         emit AcceptDeployment(requestID, privateWorkerAddress);
