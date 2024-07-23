@@ -164,7 +164,6 @@ contract blueprint {
         require (bytes(serverURL).length > 0, "server URL is empty");
         require (bytes(base64Proposal).length > 0, "base64Proposal is empty");
 
-        require(solverAddress != address(0),"solverAddress not validate");
 
         // generate unique message hash
         messageHash = keccak256(abi.encodePacked(block.timestamp,msg.sender,base64Proposal));
