@@ -13,32 +13,40 @@ contract blueprint {
         GeneratedProof
     }
 
+
     struct DeploymentStatus {
         Status status;
         address deployWorkerAddr;
     }
 
 
+
     bytes32 private messageHash;
     mapping(address => bytes32) public latestProposalRequestID;
     mapping(address => bytes32) public latestDeploymentRequestID;
+    mapping(address => bytes32) public latestProjectID;
+
     mapping (address => uint256) public solverReputation;
     mapping (address => uint256) public workerReputation;
     mapping (bytes32 => DeploymentStatus) public requestDeploymentStatus;
+
+
     mapping (bytes32 => string) private deploymentProof;
     mapping (bytes32 => address) private requestSolver;
     mapping (bytes32 => address) private requestWorker;
+    mapping (bytes32 => address) private projectIDs;
 
     uint256 public factor;
     uint256 public totalProposalRequest;
     uint256 public totalDeploymentRequest;
 
-    event RequestProposal(address indexed walletAddress, bytes32 indexed messageHash, string base64RecParam, string serverURL);
-    event RequestPrivateProposal(address indexed walletAddress, address privateSolverAddress, bytes32 messageHash, string base64RecParam, string serverURL);
-    event RequestDeployment(address indexed walletAddress,address indexed solverAddress, bytes32 indexed messageHash,string base64Proposal, string serverURL);
-    event RequestPrivateDeployment(address indexed walletAddress, address privateWorkerAddress, address indexed solverAddress, bytes32 messageHash, string base64Proposal, string serverURL);
-    event AcceptDeployment(bytes32 indexed requestID, address indexed workerAddress);
-    event GeneratedProofOfDeployment(bytes32 indexed requestID, string base64DeploymentProof);
+    event CreateProjectID(bytes32 indexed projectID ,address walletAddress);
+    event RequestProposal(bytes32 indexed projectID, address walletAddress, bytes32 indexed requestID, string base64RecParam, string serverURL);
+    event RequestPrivateProposal(bytes32 indexed projectID, address walletAddress, address privateSolverAddress, bytes32 indexed requestID, string base64RecParam, string serverURL);
+    event RequestDeployment(bytes32 indexed projectID, address  walletAddress,address solverAddress, bytes32 indexed requestID,string base64Proposal, string serverURL);
+    event RequestPrivateDeployment(bytes32 indexed projectID, address  walletAddress, address privateWorkerAddress, address solverAddress, bytes32 indexed requestID, string base64Proposal, string serverURL);
+    event AcceptDeployment(bytes32 indexed projectID, bytes32 indexed requestID, address indexed workerAddress);
+    event GeneratedProofOfDeployment(bytes32 indexed projectID, bytes32 indexed requestID, string base64DeploymentProof);
 
     constructor() {
         // set the factor, used for float type calculation
@@ -71,6 +79,16 @@ contract blueprint {
 
     }
 
+    function createProjectID() public returns (bytes32 projectId) {
+        // generate unique project id
+        projectId = keccak256(abi.encodePacked(block.timestamp, msg.sender, block.chainid));
+        // set project id into mapping
+        projectIDs[projectId] = msg.sender;
+        // set latest project
+        latestProjectID[msg.sender] = projectId;
+
+        emit CreateProjectID(projectId, msg.sender);
+    }
 
     // issue RequestProposal
     //  data should be encoded base64 ChainRequestParam json string
@@ -85,13 +103,15 @@ contract blueprint {
 //            ComputeProposal           // Embed ComputeProposal
 //    }
 
-    function createProposalRequest(string memory base64RecParam, string memory serverURL) public returns (bytes32 requestID) {
+    function createProposalRequest(bytes32 projectId, string memory base64RecParam, string memory serverURL) public returns (bytes32 requestID) {
+
+        require(projectIDs[projectId] != address(0),"projectId not exit");
 
         require (bytes(serverURL).length > 0, "server URL is empty");
         require (bytes(base64RecParam).length >  0, "base64RecParam is empty");
 
         // generate unique hash
-        messageHash = keccak256(abi.encodePacked(block.timestamp,msg.sender,base64RecParam));
+        messageHash = keccak256(abi.encodePacked(block.timestamp,msg.sender,base64RecParam, block.chainid));
 
         requestID = messageHash;
 
@@ -99,16 +119,19 @@ contract blueprint {
 
         totalProposalRequest++;
 
-        emit RequestProposal(msg.sender,messageHash,base64RecParam,serverURL);
+        emit RequestProposal(projectId,msg.sender,messageHash,base64RecParam,serverURL);
 
     }
 
-    function createPrivateProposalRequest(address privateSolverAddress,string memory base64RecParam, string memory serverURL) public returns (bytes32 requestID) {
+    function createPrivateProposalRequest(bytes32 projectId, address privateSolverAddress,string memory base64RecParam, string memory serverURL) public returns (bytes32 requestID) {
+
+        require(projectIDs[projectId] != address(0),"projectId not exit");
+
         require (bytes(serverURL).length > 0, "server URL is empty");
         require (bytes(base64RecParam).length >  0, "base64RecParam is empty");
 
         // generate unique hash
-        messageHash = keccak256(abi.encodePacked(block.timestamp,msg.sender,base64RecParam));
+        messageHash = keccak256(abi.encodePacked(block.timestamp,msg.sender,base64RecParam,block.chainid));
 
         requestID = messageHash;
 
@@ -119,7 +142,7 @@ contract blueprint {
         // set request id associated private solver
         requestSolver[requestID] = privateSolverAddress;
 
-        emit RequestPrivateProposal(msg.sender,privateSolverAddress, messageHash,base64RecParam,serverURL);
+        emit RequestPrivateProposal(projectId, msg.sender,privateSolverAddress, messageHash,base64RecParam,serverURL);
 
     }
 
@@ -132,14 +155,17 @@ contract blueprint {
 //            StorageProposal         // Embed StorageProposal
 //            ComputeProposal         // Embed ComputeProposal
 //    }
-    function createDeploymentRequest(address solverAddress,string memory base64Proposal, string memory serverURL) public returns (bytes32 requestID){
+    function createDeploymentRequest(bytes32 projectId, address solverAddress,string memory base64Proposal, string memory serverURL) public returns (bytes32 requestID){
+
+        require(projectIDs[projectId] != address(0),"projectId not exit");
+
         require (bytes(serverURL).length > 0, "server URL is empty");
         require (bytes(base64Proposal).length >  0, "base64Proposal is empty");
 
         require(solverAddress != address(0),"solverAddress not validate");
 
         // generate unique message hash
-        messageHash = keccak256(abi.encodePacked(block.timestamp,msg.sender,base64Proposal));
+        messageHash = keccak256(abi.encodePacked(block.timestamp,msg.sender,base64Proposal, block.chainid));
 
         requestID = messageHash;
 
@@ -157,11 +183,13 @@ contract blueprint {
         // set solver reputation
         setReputation(solverAddress);
 
-        emit RequestDeployment(msg.sender,solverAddress,messageHash, base64Proposal,serverURL);
+        emit RequestDeployment(projectId, msg.sender,solverAddress,messageHash, base64Proposal,serverURL);
 
     }
 
-    function createPrivateDeploymentRequest(address solverAddress, address privateWorkerAddress, string memory base64Proposal, string memory serverURL) public returns (bytes32 requestID) {
+    function createPrivateDeploymentRequest(bytes32 projectId, address solverAddress, address privateWorkerAddress, string memory base64Proposal, string memory serverURL) public returns (bytes32 requestID) {
+
+        require(projectIDs[projectId] != address(0),"projectId not exit");
 
         require (bytes(serverURL).length > 0, "server URL is empty");
         require (bytes(base64Proposal).length > 0, "base64Proposal is empty");
@@ -169,7 +197,7 @@ contract blueprint {
         require(solverAddress != address(0),"solverAddress not validate");
 
         // generate unique message hash
-        messageHash = keccak256(abi.encodePacked(block.timestamp,msg.sender,base64Proposal));
+        messageHash = keccak256(abi.encodePacked(block.timestamp,msg.sender,base64Proposal, block.chainid));
 
         requestID = messageHash;
 
@@ -187,13 +215,16 @@ contract blueprint {
 
         requestDeploymentStatus[requestID] = deploymentStatus;
 
-        emit RequestPrivateDeployment(msg.sender,privateWorkerAddress,solverAddress,messageHash, base64Proposal,serverURL);
+        emit RequestPrivateDeployment(projectId, msg.sender,privateWorkerAddress,solverAddress,messageHash, base64Proposal,serverURL);
 
         // emit accept deployment event since this deployment request is accepted by blueprint
-        emit AcceptDeployment(requestID, privateWorkerAddress);
+        emit AcceptDeployment(projectId, requestID, privateWorkerAddress);
     }
 
-    function submitProofOfDeployment(bytes32 requestID, string memory proofBase64) public{
+    function submitProofOfDeployment(bytes32 projectId, bytes32 requestID, string memory proofBase64) public{
+
+        require(projectIDs[projectId] != address(0),"projectId not exit");
+
         require (requestID.length > 0, "request ID is empty");
         require(requestDeploymentStatus[requestID].status != Status.Init,"request ID not exit");
         require(requestDeploymentStatus[requestID].deployWorkerAddr == msg.sender,"wrong worker address");
@@ -206,12 +237,15 @@ contract blueprint {
         // save deployment proof to mapping
         deploymentProof[requestID] = proofBase64;
 
-        emit GeneratedProofOfDeployment(requestID, proofBase64);
+        emit GeneratedProofOfDeployment(projectId, requestID, proofBase64);
 
 
     }
 
-    function submitDeploymentRequest(bytes32 requestID) public returns (bool isAccepted) {
+    function submitDeploymentRequest(bytes32 projectId, bytes32 requestID) public returns (bool isAccepted) {
+
+        require(projectIDs[projectId] != address(0),"projectId not exit");
+
         require (requestID.length > 0, "request ID is empty");
         require(requestDeploymentStatus[requestID].status != Status.Init,"request ID not exit");
         require(requestDeploymentStatus[requestID].status != Status.Pickup,"request ID already pick by another worker, try different request id");
@@ -222,7 +256,7 @@ contract blueprint {
 
         isAccepted = true;
 
-        emit AcceptDeployment(requestID, requestDeploymentStatus[requestID].deployWorkerAddr);
+        emit AcceptDeployment(projectId, requestID, requestDeploymentStatus[requestID].deployWorkerAddr);
     }
 
 
@@ -243,5 +277,9 @@ contract blueprint {
         return latestDeploymentRequestID[addr];
     }
 
+    // get latest project id of user
+    function getLatestUserProjectID(address addr) public view returns (bytes32) {
 
+        return latestProjectID[addr];
+    }
 }
