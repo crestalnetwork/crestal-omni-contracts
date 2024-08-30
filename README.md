@@ -16,6 +16,8 @@ foundryup
 Install OpenZeppelin contracts:
 ```bash
 forge install OpenZeppelin/openzeppelin-contracts
+forge install OpenZeppelin/openzeppelin-foundry-upgrades
+forge install OpenZeppelin/openzeppelin-contracts-upgradeable
 ```
 
 ### Tools
