@@ -15,3 +15,6 @@ docs/
 
 # NPM
 node_modules/
+
+# Misc
+*.swp
