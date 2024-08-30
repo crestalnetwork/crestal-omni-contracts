@@ -68,15 +68,9 @@ contract Blueprint {
         string base64Proposal,
         string serverURL
     );
-    event AcceptDeployment(
-        bytes32 indexed projectID,
-        bytes32 indexed requestID,
-        address indexed workerAddress
-    );
+    event AcceptDeployment(bytes32 indexed projectID, bytes32 indexed requestID, address indexed workerAddress);
     event GeneratedProofOfDeployment(
-        bytes32 indexed projectID,
-        bytes32 indexed requestID,
-        string base64DeploymentProof
+        bytes32 indexed projectID, bytes32 indexed requestID, string base64DeploymentProof
     );
 
     // get solver reputation
@@ -105,9 +99,7 @@ contract Blueprint {
 
     function createProjectID() public returns (bytes32 projectId) {
         // generate unique project id
-        projectId = keccak256(
-            abi.encodePacked(block.timestamp, msg.sender, block.chainid)
-        );
+        projectId = keccak256(abi.encodePacked(block.timestamp, msg.sender, block.chainid));
         // set project id into mapping
         projectIDs[projectId] = msg.sender;
         // set latest project
@@ -121,28 +113,17 @@ contract Blueprint {
     // https://github.com/crestalnetwork/crestal-dashboard-backend/blob/testnet-dev/listen/type.go#L9
     // example: {"type":"DA","latency":5,"max_throughput":20,"finality_time":10,"block_time":5,"created_at":"0001-01-01T00:00:00Z"}
     // associated base64 string: eyJ0eXBlIjoiREEiLCJsYXRlbmN5Ijo1LCJtYXhfdGhyb3VnaHB1dCI6MjAsImZpbmFsaXR5X3RpbWUiOjEwLCJibG9ja190aW1lIjo1LCJjcmVhdGVkX2F0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQ
-    function createProposalRequest(
-        bytes32 projectId,
-        string memory base64RecParam,
-        string memory serverURL
-    ) public returns (bytes32 requestID) {
-        require(
-            projectIDs[projectId] != address(0),
-            "projectId does not exist"
-        );
+    function createProposalRequest(bytes32 projectId, string memory base64RecParam, string memory serverURL)
+        public
+        returns (bytes32 requestID)
+    {
+        require(projectIDs[projectId] != address(0), "projectId does not exist");
 
         require(bytes(serverURL).length > 0, "serverURL is empty");
         require(bytes(base64RecParam).length > 0, "base64RecParam is empty");
 
         // generate unique hash
-        bytes32 messageHash = keccak256(
-            abi.encodePacked(
-                block.timestamp,
-                msg.sender,
-                base64RecParam,
-                block.chainid
-            )
-        );
+        bytes32 messageHash = keccak256(abi.encodePacked(block.timestamp, msg.sender, base64RecParam, block.chainid));
 
         requestID = messageHash;
 
@@ -152,13 +133,7 @@ contract Blueprint {
 
         totalProposalRequest++;
 
-        emit RequestProposal(
-            projectId,
-            msg.sender,
-            messageHash,
-            base64RecParam,
-            serverURL
-        );
+        emit RequestProposal(projectId, msg.sender, messageHash, base64RecParam, serverURL);
     }
 
     // TODO: Merge Private and non-Private calls, as most logic is the same
@@ -168,23 +143,13 @@ contract Blueprint {
         string memory base64RecParam,
         string memory serverURL
     ) public returns (bytes32 requestID) {
-        require(
-            projectIDs[projectId] != address(0),
-            "projectId does not exist"
-        );
+        require(projectIDs[projectId] != address(0), "projectId does not exist");
 
         require(bytes(serverURL).length > 0, "serverURL is empty");
         require(bytes(base64RecParam).length > 0, "base64RecParam is empty");
 
         // generate unique hash
-        bytes32 messageHash = keccak256(
-            abi.encodePacked(
-                block.timestamp,
-                msg.sender,
-                base64RecParam,
-                block.chainid
-            )
-        );
+        bytes32 messageHash = keccak256(abi.encodePacked(block.timestamp, msg.sender, base64RecParam, block.chainid));
 
         requestID = messageHash;
 
@@ -197,14 +162,7 @@ contract Blueprint {
         // set request id associated private solver
         requestSolver[requestID] = privateSolverAddress;
 
-        emit RequestPrivateProposal(
-            projectId,
-            msg.sender,
-            privateSolverAddress,
-            messageHash,
-            base64RecParam,
-            serverURL
-        );
+        emit RequestPrivateProposal(projectId, msg.sender, privateSolverAddress, messageHash, base64RecParam, serverURL);
     }
 
     // issue DeploymentRequest
@@ -217,10 +175,7 @@ contract Blueprint {
         string memory base64Proposal,
         string memory serverURL
     ) public returns (bytes32 requestID) {
-        require(
-            projectIDs[projectId] != address(0),
-            "projectId does not exist"
-        );
+        require(projectIDs[projectId] != address(0), "projectId does not exist");
 
         require(bytes(serverURL).length > 0, "serverURL is empty");
         require(bytes(base64Proposal).length > 0, "base64Proposal is empty");
@@ -228,14 +183,7 @@ contract Blueprint {
         require(solverAddress != address(0), "solverAddress is not valid");
 
         // generate unique message hash
-        bytes32 messageHash = keccak256(
-            abi.encodePacked(
-                block.timestamp,
-                msg.sender,
-                base64Proposal,
-                block.chainid
-            )
-        );
+        bytes32 messageHash = keccak256(abi.encodePacked(block.timestamp, msg.sender, base64Proposal, block.chainid));
 
         requestID = messageHash;
 
@@ -252,14 +200,7 @@ contract Blueprint {
         // set solver reputation
         setReputation(solverAddress);
 
-        emit RequestDeployment(
-            projectId,
-            msg.sender,
-            solverAddress,
-            messageHash,
-            base64Proposal,
-            serverURL
-        );
+        emit RequestDeployment(projectId, msg.sender, solverAddress, messageHash, base64Proposal, serverURL);
     }
 
     // TODO: Why not just pass in requestID here?
@@ -271,10 +212,7 @@ contract Blueprint {
         string memory base64Proposal,
         string memory serverURL
     ) public returns (bytes32 requestID) {
-        require(
-            projectIDs[projectId] != address(0),
-            "projectId does not exist"
-        );
+        require(projectIDs[projectId] != address(0), "projectId does not exist");
 
         require(bytes(serverURL).length > 0, "serverURL is empty");
         require(bytes(base64Proposal).length > 0, "base64Proposal is empty");
@@ -282,14 +220,7 @@ contract Blueprint {
         require(solverAddress != address(0), "solverAddress is not valid");
 
         // generate unique message hash
-        bytes32 messageHash = keccak256(
-            abi.encodePacked(
-                block.timestamp,
-                msg.sender,
-                base64Proposal,
-                block.chainid
-            )
-        );
+        bytes32 messageHash = keccak256(abi.encodePacked(block.timestamp, msg.sender, base64Proposal, block.chainid));
 
         requestID = messageHash;
 
@@ -308,43 +239,21 @@ contract Blueprint {
         requestDeploymentStatus[requestID] = deploymentStatus;
 
         emit RequestPrivateDeployment(
-            projectId,
-            msg.sender,
-            privateWorkerAddress,
-            solverAddress,
-            messageHash,
-            base64Proposal,
-            serverURL
+            projectId, msg.sender, privateWorkerAddress, solverAddress, messageHash, base64Proposal, serverURL
         );
 
         // emit accept deployment event since this deployment request is accepted by blueprint
         emit AcceptDeployment(projectId, requestID, privateWorkerAddress);
     }
 
-    function submitProofOfDeployment(
-        bytes32 projectId,
-        bytes32 requestID,
-        string memory proofBase64
-    ) public {
-        require(
-            projectIDs[projectId] != address(0),
-            "projectId does not exist"
-        );
+    function submitProofOfDeployment(bytes32 projectId, bytes32 requestID, string memory proofBase64) public {
+        require(projectIDs[projectId] != address(0), "projectId does not exist");
 
         require(requestID.length > 0, "requestID is empty");
-        require(
-            requestDeploymentStatus[requestID].status != Status.Init,
-            "request ID not exit"
-        );
-        require(
-            requestDeploymentStatus[requestID].deployWorkerAddr == msg.sender,
-            "wrong worker address"
-        );
+        require(requestDeploymentStatus[requestID].status != Status.Init, "request ID not exit");
+        require(requestDeploymentStatus[requestID].deployWorkerAddr == msg.sender, "wrong worker address");
 
-        require(
-            requestDeploymentStatus[requestID].status != Status.GeneratedProof,
-            "already submit proof"
-        );
+        require(requestDeploymentStatus[requestID].status != Status.GeneratedProof, "already submit proof");
 
         // set deployment status into generatedProof
         requestDeploymentStatus[requestID].status = Status.GeneratedProof;
@@ -355,20 +264,11 @@ contract Blueprint {
         emit GeneratedProofOfDeployment(projectId, requestID, proofBase64);
     }
 
-    function submitDeploymentRequest(
-        bytes32 projectId,
-        bytes32 requestID
-    ) public returns (bool isAccepted) {
-        require(
-            projectIDs[projectId] != address(0),
-            "projectId does not exist"
-        );
+    function submitDeploymentRequest(bytes32 projectId, bytes32 requestID) public returns (bool isAccepted) {
+        require(projectIDs[projectId] != address(0), "projectId does not exist");
 
         require(requestID.length > 0, "requestID is empty");
-        require(
-            requestDeploymentStatus[requestID].status != Status.Init,
-            "requestID does not exist"
-        );
+        require(requestDeploymentStatus[requestID].status != Status.Init, "requestID does not exist");
         require(
             requestDeploymentStatus[requestID].status != Status.Pickup,
             "requestID already picked by another worker, try a different requestID"
@@ -380,41 +280,26 @@ contract Blueprint {
 
         isAccepted = true;
 
-        emit AcceptDeployment(
-            projectId,
-            requestID,
-            requestDeploymentStatus[requestID].deployWorkerAddr
-        );
+        emit AcceptDeployment(projectId, requestID, requestDeploymentStatus[requestID].deployWorkerAddr);
     }
 
     // get latest deployment status
-    function getDeploymentStatus(
-        bytes32 requestID
-    ) public view returns (Status, address) {
-        return (
-            requestDeploymentStatus[requestID].status,
-            requestDeploymentStatus[requestID].deployWorkerAddr
-        );
+    function getDeploymentStatus(bytes32 requestID) public view returns (Status, address) {
+        return (requestDeploymentStatus[requestID].status, requestDeploymentStatus[requestID].deployWorkerAddr);
     }
 
     // get latest proposal request id
-    function getLatestProposalRequestID(
-        address addr
-    ) public view returns (bytes32) {
+    function getLatestProposalRequestID(address addr) public view returns (bytes32) {
         return latestProposalRequestID[addr];
     }
 
     // get latest deployment request id
-    function getLatestDeploymentRequestID(
-        address addr
-    ) public view returns (bytes32) {
+    function getLatestDeploymentRequestID(address addr) public view returns (bytes32) {
         return latestDeploymentRequestID[addr];
     }
 
     // get latest project id of user
-    function getLatestUserProjectID(
-        address addr
-    ) public view returns (bytes32) {
+    function getLatestUserProjectID(address addr) public view returns (bytes32) {
         return latestProjectID[addr];
     }
 }

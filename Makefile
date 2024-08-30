@@ -1,9 +1,6 @@
-.PHONY: fmt abi deploy check
+.PHONY: abi deploy check
 
 RPC_URL ?= http://127.0.0.1:8545
-
-fmt:
-	npx prettier --write --plugin=prettier-plugin-solidity 'src/**/*.sol'
 
 abi:
 	cp out/Blueprint.sol/Blueprint.json artifacts/

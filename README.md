@@ -24,15 +24,13 @@ forge install OpenZeppelin/openzeppelin-contracts-upgradeable
 
 (Optional) Recommend installing [solc-select](https://github.com/crytic/solc-select) to manage Solidity compiler versions.
 
-Install Solidity prettier [as a tool](https://github.com/prettier-solidity/prettier-plugin-solidity) or [as a plugin in your favorite editor](https://prettier.io/docs/en/editors).
-
 ## Usage
 
 ### Development
 
 Format source files:
 ```bash
-make fmt
+forge fmt
 ```
 
 Build contracts:

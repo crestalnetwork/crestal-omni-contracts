@@ -3,9 +3,5 @@
   "version": "1.0.0",
   "description": "Contracts serving as Blueprint for Crestal Network.",
   "license": "MIT",
-  "abi_path": "./artifacts/*.json",
-  "devDependencies": {
-    "prettier": "^3.3.3",
-    "prettier-plugin-solidity": "^1.4.1"
-  }
+  "abi_path": "./artifacts/*.json"
 }
