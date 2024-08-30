@@ -17,7 +17,11 @@ contract Blueprint {
         address deployWorkerAddr;
     }
 
-    bytes32 private messageHash;
+    string public VERSION = "0.0.0";
+    uint256 public factor = 10000;
+    uint256 public totalProposalRequest = 0;
+    uint256 public totalDeploymentRequest = 0;
+
     mapping(address => bytes32) public latestProposalRequestID;
     mapping(address => bytes32) public latestDeploymentRequestID;
     mapping(address => bytes32) public latestProjectID;
@@ -30,10 +34,6 @@ contract Blueprint {
     mapping(bytes32 => address) private requestSolver;
     mapping(bytes32 => address) private requestWorker;
     mapping(bytes32 => address) private projectIDs;
-
-    uint256 public factor;
-    uint256 public totalProposalRequest;
-    uint256 public totalDeploymentRequest;
 
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);
     event RequestProposal(
@@ -78,13 +78,6 @@ contract Blueprint {
         bytes32 indexed requestID,
         string base64DeploymentProof
     );
-
-    constructor() {
-        // set the factor, used for float type calculation
-        factor = 10000;
-        totalProposalRequest = 0;
-        totalDeploymentRequest = 0;
-    }
 
     // get solver reputation
     function getReputation(address addr) public view returns (uint256) {
@@ -142,7 +135,7 @@ contract Blueprint {
         require(bytes(base64RecParam).length > 0, "base64RecParam is empty");
 
         // generate unique hash
-        messageHash = keccak256(
+        bytes32 messageHash = keccak256(
             abi.encodePacked(
                 block.timestamp,
                 msg.sender,
@@ -184,7 +177,7 @@ contract Blueprint {
         require(bytes(base64RecParam).length > 0, "base64RecParam is empty");
 
         // generate unique hash
-        messageHash = keccak256(
+        bytes32 messageHash = keccak256(
             abi.encodePacked(
                 block.timestamp,
                 msg.sender,
@@ -235,7 +228,7 @@ contract Blueprint {
         require(solverAddress != address(0), "solverAddress is not valid");
 
         // generate unique message hash
-        messageHash = keccak256(
+        bytes32 messageHash = keccak256(
             abi.encodePacked(
                 block.timestamp,
                 msg.sender,
@@ -289,7 +282,7 @@ contract Blueprint {
         require(solverAddress != address(0), "solverAddress is not valid");
 
         // generate unique message hash
-        messageHash = keccak256(
+        bytes32 messageHash = keccak256(
             abi.encodePacked(
                 block.timestamp,
                 msg.sender,

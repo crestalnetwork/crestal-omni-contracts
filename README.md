@@ -22,7 +22,7 @@ forge install OpenZeppelin/openzeppelin-contracts
 
 Install Solidity prettier [as a tool](https://github.com/prettier-solidity/prettier-plugin-solidity) or [as a plugin in your favorite editor](https://prettier.io/docs/en/editors).
 
-### Usage
+## Usage
 
 Format source files:
 ```
