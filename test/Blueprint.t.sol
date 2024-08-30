@@ -2,6 +2,7 @@
 pragma solidity ^0.8.26;
 
 import {Test, console} from "forge-std/Test.sol";
+import {Vm} from "forge-std/Vm.sol";
 import {Blueprint} from "../src/Blueprint.sol";
 
 contract BlueprintTest is Test {
@@ -15,7 +16,7 @@ contract BlueprintTest is Test {
     // Fill in more tests later!
     function test_ProjectID() public {
         bytes32 pid = blueprint.createProjectID();
-        bytes32 projId = blueprint.latestProjectID(msg.sender);
+        bytes32 projId = blueprint.getLatestUserProjectID(address(this));
         assertEq(pid, projId);
     }
 }

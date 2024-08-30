@@ -33,3 +33,8 @@ Build contracts:
 ```
 forge build
 ```
+
+Test contracts:
+```
+forge test
+```
