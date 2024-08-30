@@ -3,13 +3,13 @@ pragma solidity ^0.8.26;
 
 import {Test, console} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
-import {Blueprint} from "../src/Blueprint.sol";
+import {BlueprintV1} from "../src/BlueprintV1.sol";
 
 contract BlueprintTest is Test {
-    Blueprint public blueprint;
+    BlueprintV1 public blueprint;
 
     function setUp() public {
-        blueprint = new Blueprint();
+        blueprint = new BlueprintV1();
     }
 
     // TODO: This is just an example of how to write Solidity-native tests
