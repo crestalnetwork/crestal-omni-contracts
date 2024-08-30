@@ -38,3 +38,8 @@ Test contracts:
 ```
 forge test
 ```
+
+Generate abi (for external access):
+```
+make abi
+```
