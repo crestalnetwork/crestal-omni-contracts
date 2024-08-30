@@ -56,11 +56,21 @@ anvil
 ```
 
 Deploy (locally - copy private key from anvil output):
-```
+```bash
 PRIVATE_KEY=xxx make deploy
 ```
 
-Deploy (to networks):
+Sanity check (locally):
+```bash
+CONTRACT_ADDRESS=xxx make check
 ```
+
+Deploy (to networks):
+```bash
 PRIVATE_KEY=xxx RPC_URL=https://xxx make deploy
+```
+
+Sanity check (on networks):
+```bash
+CONTRACT_ADDRESS=xxx RPC_URL=https://xxx make check
 ```
