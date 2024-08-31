@@ -21,7 +21,7 @@ contract BlueprintTest is Test {
         assertEq(pid, projId);
     }
 
-    function test_VERSION() public {
+    function test_VERSION() public view {
         string memory ver = blueprint.VERSION();
         assertEq(ver, "1.0.0");
     }

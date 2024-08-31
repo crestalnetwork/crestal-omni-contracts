@@ -6,7 +6,7 @@ abi:
 	cp out/BlueprintV1.sol/BlueprintV1.json artifacts/
 
 deploy:
-	forge create --rpc-url $(RPC_URL) --private-key $(PRIVATE_KEY) src/BlueprintV1.sol:BlueprintV1
+	forge script ./script/Deploy.s.sol --rpc-url $(RPC_URL) --private-key $(PRIVATE_KEY)
 
 check:
 	cast call --rpc-url $(RPC_URL) $(CONTRACT_ADDRESS) "VERSION()(string)"
