@@ -14,10 +14,7 @@ contract BlueprintTestUpgrade is Test {
         BlueprintV1 blueprint = new BlueprintV1();
 
         // Create a proxy pointing to the implementation
-        ERC1967Proxy e1967 = new ERC1967Proxy(
-            address(blueprint),
-            abi.encodeWithSignature("initialize()")
-        );
+        ERC1967Proxy e1967 = new ERC1967Proxy(address(blueprint), abi.encodeWithSignature("initialize()"));
 
         // Interact with the proxy as if it were the implementation
         proxy = BlueprintV1(address(e1967));

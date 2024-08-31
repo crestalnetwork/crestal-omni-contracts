@@ -65,27 +65,46 @@ make abi
 
 ### Deployment
 
-Local deployment setup (start local node in a separate window):
+#### Local
+
+Start local node in a separate window:
 ```bash
 anvil
 ```
 
-Deploy (locally - copy private key from anvil output):
+Deploy (copy private key from `anvil` output):
 ```bash
 PRIVATE_KEY=xxx make deploy
 ```
 
-Sanity check (locally):
+Upgrade test (copy proxy address from deployed output):
 ```bash
-CONTRACT_ADDRESS=xxx make check
+PRIVATE_KEY=xxx PROXY_ADDRESS=xxx make upgrade-test
 ```
 
-Deploy (to networks):
+Upgrade (copy proxy address from deployed output):
+```bash
+PRIVATE_KEY=xxx PROXY_ADDRESS=xxx make upgrade
+```
+
+Sanity check:
+```bash
+PROXY_ADDRESS=xxx make check
+```
+
+#### Live Networks
+
+Deploy:
 ```bash
 PRIVATE_KEY=xxx RPC_URL=https://xxx make deploy
 ```
 
-Sanity check (on networks):
+Upgrade (copy proxy address from deployed output):
 ```bash
-CONTRACT_ADDRESS=xxx RPC_URL=https://xxx make check
+PRIVATE_KEY=xxx RPC_URL=https://xxx PROXY_ADDRESS=xxx make upgrade
+```
+
+Sanity check:
+```bash
+PROXY_ADDRESS=xxx RPC_URL=https://xxx make check
 ```
