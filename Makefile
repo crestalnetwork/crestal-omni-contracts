@@ -1,5 +1,9 @@
 .PHONY: abi deploy upgrade upgrade-test check
 
+ifdef ENV_FILE
+include $(ENV_FILE)
+endif
+
 RPC_URL ?= http://127.0.0.1:8545
 
 abi:

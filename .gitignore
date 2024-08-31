@@ -11,7 +11,7 @@ out/
 docs/
 
 # Dotenv file
-.env
+.env*
 
 # NPM
 node_modules/

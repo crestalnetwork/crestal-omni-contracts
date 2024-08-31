@@ -108,3 +108,10 @@ Sanity check:
 ```bash
 PROXY_ADDRESS=xxx RPC_URL=https://xxx make check
 ```
+
+#### Tips
+
+Put all env-related variables in a per chain `.env.chain` file then use the following:
+```bash
+ENV_FILE=.env.chain make deploy
+```
