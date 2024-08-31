@@ -10,6 +10,7 @@ contract BlueprintTest is Test {
 
     function setUp() public {
         blueprint = new BlueprintV1();
+        blueprint.initialize(); // mimic upgrdeable contract deploy behavior
     }
 
     // TODO: This is just an example of how to write Solidity-native tests
@@ -18,5 +19,10 @@ contract BlueprintTest is Test {
         bytes32 pid = blueprint.createProjectID();
         bytes32 projId = blueprint.getLatestUserProjectID(address(this));
         assertEq(pid, projId);
+    }
+
+    function test_VERSION() public {
+        string memory ver = blueprint.VERSION();
+        assertEq(ver, "1.0.0");
     }
 }
