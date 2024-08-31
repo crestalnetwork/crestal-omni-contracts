@@ -25,6 +25,10 @@ Install [OpenZeppelin Upgrades CLI](https://docs.openzeppelin.com/upgrades-plugi
 npm install @openzeppelin/upgrades-core
 ```
 
+### Setup (one-time)
+
+This only needs to be [set up](https://docs.openzeppelin.com/upgrades-plugins/1.x/foundry-upgrades) during initialization for each Foundry project. Keeping it as reference.
+
 ### Tools
 
 (Optional) Recommend installing [solc-select](https://github.com/crytic/solc-select) to manage Solidity compiler versions.
