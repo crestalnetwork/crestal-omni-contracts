@@ -17,10 +17,10 @@ contract Blueprint {
         address deployWorkerAddr;
     }
 
-    string public VERSION = "0.0.0";
-    uint256 public factor = 10000;
-    uint256 public totalProposalRequest = 0;
-    uint256 public totalDeploymentRequest = 0;
+    string public VERSION;
+    uint256 public factor;
+    uint256 public totalProposalRequest;
+    uint256 public totalDeploymentRequest;
 
     mapping(address => bytes32) public latestProposalRequestID;
     mapping(address => bytes32) public latestDeploymentRequestID;

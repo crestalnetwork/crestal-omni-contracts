@@ -20,6 +20,11 @@ forge install OpenZeppelin/openzeppelin-foundry-upgrades
 forge install OpenZeppelin/openzeppelin-contracts-upgradeable
 ```
 
+Install [OpenZeppelin Upgrades CLI](https://docs.openzeppelin.com/upgrades-plugins/1.x/api-core):
+```bash
+npm install @openzeppelin/upgrades-core
+```
+
 ### Tools
 
 (Optional) Recommend installing [solc-select](https://github.com/crytic/solc-select) to manage Solidity compiler versions.
@@ -35,6 +40,7 @@ forge fmt
 
 Build contracts:
 ```bash
+forge clean
 forge build
 ```
 

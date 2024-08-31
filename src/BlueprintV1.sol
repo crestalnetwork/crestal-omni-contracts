@@ -10,6 +10,9 @@ contract BlueprintV1 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Blue
     function initialize() public initializer {
         __Ownable_init(msg.sender);
         VERSION = "1.0.0";
+        factor = 10000;
+        totalProposalRequest = 0;
+        totalDeploymentRequest = 0;
     }
 
     // The _authorizeUpgrade function is required by the UUPSUpgradeable contract
