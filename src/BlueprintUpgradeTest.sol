@@ -6,14 +6,11 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./Blueprint.sol";
 
-contract BlueprintV1 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Blueprint {
-    function initialize() public reinitializer(1) {
+contract BlueprintUpgradeTest is Initializable, UUPSUpgradeable, OwnableUpgradeable, Blueprint {
+    function initialize() public reinitializer(2) {
         __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
-        VERSION = "1.0.0";
-        factor = 10000;
-        totalProposalRequest = 0;
-        totalDeploymentRequest = 0;
+        VERSION = "TESTING";
     }
 
     // The _authorizeUpgrade function is required by the UUPSUpgradeable contract

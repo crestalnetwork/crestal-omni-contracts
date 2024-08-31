@@ -10,7 +10,7 @@ contract BlueprintTest is Test {
 
     function setUp() public {
         blueprint = new BlueprintV1();
-        blueprint.initialize(); // mimic upgrdeable contract deploy behavior
+        blueprint.initialize(); // mimic upgradeable contract deploy behavior
     }
 
     // TODO: This is just an example of how to write Solidity-native tests

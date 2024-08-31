@@ -20,6 +20,11 @@ forge install OpenZeppelin/openzeppelin-foundry-upgrades
 forge install OpenZeppelin/openzeppelin-contracts-upgradeable
 ```
 
+Update dependencies (for an existing project):
+```bash
+forge update
+```
+
 Install [OpenZeppelin Upgrades CLI](https://docs.openzeppelin.com/upgrades-plugins/1.x/api-core):
 ```bash
 npm install @openzeppelin/upgrades-core
