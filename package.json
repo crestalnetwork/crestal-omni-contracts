@@ -1,14 +1,10 @@
 {
   "name": "crestal-omni-contracts",
   "version": "1.0.0",
-  "description": "blueprint",
-  "license": "Apache-2.0",
-   "polgyn_test_net_dev": "0xF528a3e1cf44C77290033CE052Cd0dBFf0D61E18",
-    "polgyn_test_net_rpc": "https://polygon-amoy.infura.io/v3/4c7d82e25d1c4af3bc7c3df6651b9bd7",
-   "polygon_test_net_prod": "",
-   "bera_test_net_dev": "0x44d608E4E50dDfD7e039D64266593080286dE080",
-    "bera_test_net_rpc": "https://bartio.rpc.berachain.com",
-   "bera_test_net_prod": "",
-   "abi_path": "blueprint.abi",
-   "abi_version": "1.0.0"
+  "description": "Contracts serving as Blueprint for Crestal Network.",
+  "license": "MIT",
+  "abi_path": "./artifacts/*.json",
+  "dependencies": {
+    "@openzeppelin/upgrades-core": "^1.37.0"
+  }
 }
