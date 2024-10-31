@@ -110,10 +110,8 @@ contract Blueprint {
         solverReputation[addr] = reputation;
     }
 
-    function createProjectID() public returns (bytes32 projectId) {
-        // generate unique project id
-        projectId = keccak256(abi.encodePacked(block.timestamp, msg.sender, block.chainid));
 
+    function setProjectId(bytes32 projectId) internal {
         // check project id
         require(projects[projectId].id == 0, "projectId already exist");
 
@@ -126,6 +124,13 @@ contract Blueprint {
         latestProjectID[msg.sender] = projectId;
 
         emit CreateProjectID(projectId, msg.sender);
+    }
+
+    function createProjectID() public returns (bytes32 projectId) {
+        // generate unique project id
+        projectId = keccak256(abi.encodePacked(block.timestamp, msg.sender, block.chainid));
+
+        setProjectId(projectId);
     }
 
     // issue RequestProposal
@@ -156,10 +161,10 @@ contract Blueprint {
     }
 
 
-    function createProjectIDAndProposalRequest(string memory base64RecParam, string memory serverURL) public {
-        // create project id
-        bytes32 projectId =  createProjectID();
+    function createProjectIDAndProposalRequest(bytes32 projectId,string memory base64RecParam, string memory serverURL) public {
 
+        // set project id
+        setProjectId(projectId);
         // create proposal request
         createProposalRequest(projectId, base64RecParam, serverURL);
     }
@@ -290,11 +295,13 @@ contract Blueprint {
 
 
     function createProjectIDAndDeploymentRequest(
+        bytes32 projectId,
         string memory base64Proposal,
         string memory serverURL
     )  public returns (bytes32 requestID) {
-        // create project id
-        bytes32 projectId =  createProjectID();
+
+        // set project id
+        setProjectId(projectId);
 
         // create deployment request without solver recommendation
         requestID =  DeploymentRequest(projectId, dummyAddress, dummyAddress, base64Proposal, serverURL);
