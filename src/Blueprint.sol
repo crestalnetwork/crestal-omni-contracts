@@ -17,24 +17,36 @@ contract Blueprint {
         address deployWorkerAddr;
     }
 
+    struct Project {
+        bytes32 id ;
+        bytes32 requestProposalID;
+        bytes32 requestDeploymentID;
+        address proposedSolverAddr;
+    }
+
     string public VERSION;
     uint256 public factor;
     uint256 public totalProposalRequest;
     uint256 public totalDeploymentRequest;
     address public dummyAddress = address(0);
 
+    // user to retrieve request id via wallet address
     mapping(address => bytes32) public latestProposalRequestID;
     mapping(address => bytes32) public latestDeploymentRequestID;
     mapping(address => bytes32) public latestProjectID;
 
     mapping(address => uint256) public solverReputation;
     mapping(address => uint256) public workerReputation;
+    // deployment status
     mapping(bytes32 => DeploymentStatus) public requestDeploymentStatus;
-
+    // proof of deployment
     mapping(bytes32 => string) private deploymentProof;
+    // private worker and solver
     mapping(bytes32 => address) private requestSolver;
     mapping(bytes32 => address) private requestWorker;
-    mapping(bytes32 => address) private projectIDs;
+
+    // project map
+    mapping(bytes32 => Project) private projects;
 
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);
     event RequestProposal(
@@ -103,10 +115,13 @@ contract Blueprint {
         projectId = keccak256(abi.encodePacked(block.timestamp, msg.sender, block.chainid));
 
         // check project id
-        require(projectIDs[projectId] == address(0), "projectId already exist");
+        require(projects[projectId].id == 0, "projectId already exist");
 
-        // set project id into mapping
-        projectIDs[projectId] = msg.sender;
+        Project memory project;
+        project.id = projectId;
+        // set project info into mapping
+        projects[projectId] = project;
+
         // set latest project
         latestProjectID[msg.sender] = projectId;
 
@@ -157,7 +172,9 @@ contract Blueprint {
         string memory serverURL
     ) internal returns (bytes32 requestID){
 
-        require(projectIDs[projectId] != address(0), "projectId does not exist");
+        // check project id
+
+        require(projects[projectId].id != 0, "projectId does not exist");
 
         require(bytes(serverURL).length > 0, "serverURL is empty");
         require(bytes(base64RecParam).length > 0, "base64RecParam is empty");
@@ -168,6 +185,8 @@ contract Blueprint {
         // FIXME: This prevents a msg.sender to create multiple requests at the same time?
         // For different projects, a solver is allowed to create one (latest proposal) for each.
         latestProposalRequestID[msg.sender] = requestID;
+
+        projects[projectId].requestProposalID = requestID;
 
         totalProposalRequest++;
 
@@ -200,8 +219,7 @@ contract Blueprint {
         emit RequestDeployment(projectId, msg.sender, solverAddress, requestID, base64Proposal, serverURL);
     }
 
-    // TODO: Why not just pass in requestID here?
-    // TODO: Merge Private and non-Private calls, as most logic is the same
+
     function createPrivateDeploymentRequest(
         bytes32 projectId,
         address solverAddress,
@@ -231,7 +249,7 @@ contract Blueprint {
         string memory serverURL
     ) internal returns (bytes32 requestID){
 
-        require(projectIDs[projectId] != address(0), "projectId does not exist");
+        require(projects[projectId].id != 0, "projectId does not exist");
 
         require(bytes(serverURL).length > 0, "serverURL is empty");
         require(bytes(base64Proposal).length > 0, "base64Proposal is empty");
@@ -259,7 +277,13 @@ contract Blueprint {
             deploymentStatus.deployWorkerAddr = workerAddress;
 
             requestDeploymentStatus[requestID] = deploymentStatus;
+
         }
+
+        // update project info
+        projects[projectId].requestDeploymentID = requestID;
+
+        projects[projectId].proposedSolverAddr = solverAddress;
 
         return requestID;
     }
@@ -281,7 +305,7 @@ contract Blueprint {
 
 
     function submitProofOfDeployment(bytes32 projectId, bytes32 requestID, string memory proofBase64) public {
-        require(projectIDs[projectId] != address(0), "projectId does not exist");
+        require(projects[projectId].id != 0, "projectId does not exist");
 
         require(requestID.length > 0, "requestID is empty");
         require(requestDeploymentStatus[requestID].status != Status.Init, "request ID not exit");
@@ -299,7 +323,7 @@ contract Blueprint {
     }
 
     function submitDeploymentRequest(bytes32 projectId, bytes32 requestID) public returns (bool isAccepted) {
-        require(projectIDs[projectId] != address(0), "projectId does not exist");
+        require(projects[projectId].id != 0, "projectId does not exist");
 
         require(requestID.length > 0, "requestID is empty");
         require(requestDeploymentStatus[requestID].status != Status.Init, "requestID does not exist");
@@ -308,10 +332,16 @@ contract Blueprint {
             "requestID already picked by another worker, try a different requestID"
         );
 
+        require(
+            requestDeploymentStatus[requestID].status != Status.GeneratedProof,
+            "requestID already submit proof"
+        );
+
         // currently, do first come, first server, will do a better way in the future
         requestDeploymentStatus[requestID].status = Status.Pickup;
         requestDeploymentStatus[requestID].deployWorkerAddr = msg.sender;
 
+        // set project deployed worker address
         isAccepted = true;
 
         emit AcceptDeployment(projectId, requestID, requestDeploymentStatus[requestID].deployWorkerAddr);
@@ -336,4 +366,13 @@ contract Blueprint {
     function getLatestUserProjectID(address addr) public view returns (bytes32) {
         return latestProjectID[addr];
     }
+
+    // get project info
+    function getProjectInfo(bytes32 projectId) public view returns (address,bytes32,bytes32) {
+
+        require(projects[projectId].id != 0, "projectId does not exist");
+
+        return (projects[projectId].proposedSolverAddr, projects[projectId].requestProposalID,  projects[projectId].requestDeploymentID);
+    }
+
 }
