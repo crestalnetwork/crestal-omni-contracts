@@ -187,6 +187,9 @@ contract Blueprint {
         // generate unique hash
         requestID = keccak256(abi.encodePacked(block.timestamp, msg.sender, base64RecParam, block.chainid));
 
+        // check request id is created or not
+        require(projects[projectId].requestProposalID == 0, "proposasl request id already exist");
+
         // FIXME: This prevents a msg.sender to create multiple requests at the same time?
         // For different projects, a solver is allowed to create one (latest proposal) for each.
         latestProposalRequestID[msg.sender] = requestID;
@@ -261,6 +264,11 @@ contract Blueprint {
 
         // generate unique message hash
         requestID = keccak256(abi.encodePacked(block.timestamp, msg.sender, base64Proposal, block.chainid));
+
+
+        // check request id is created or not
+        require(projects[projectId].requestDeploymentID == 0, "deployment request id already exist");
+
 
         latestDeploymentRequestID[msg.sender] = requestID;
 
