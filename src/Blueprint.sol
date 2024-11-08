@@ -133,6 +133,16 @@ contract Blueprint {
         setProjectId(projectId);
     }
 
+    function upgradeProject(bytes32 projectId) public {
+        // check project id
+        require(projects[projectId].id != 0, "projectId does not exist");
+        // reset project info
+        projects[projectId].requestProposalID = 0;
+
+        projects[projectId].requestDeploymentID = 0;
+
+        projects[projectId].proposedSolverAddr = dummyAddress;
+    }
     // issue RequestProposal
     // `base64RecParam` should be an encoded base64 ChainRequestParam json string
     // https://github.com/crestalnetwork/crestal-dashboard-backend/blob/testnet-dev/listen/type.go#L9
