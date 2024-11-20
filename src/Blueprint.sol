@@ -48,6 +48,9 @@ contract Blueprint {
     // project map
     mapping(bytes32 => Project) private projects;
 
+    // compatible with old contract, not change stores
+    mapping(bytes32 => address) private projectIDs;
+
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);
     event RequestProposal(
         bytes32 indexed projectID,
@@ -135,7 +138,7 @@ contract Blueprint {
 
     function upgradeProject(bytes32 projectId) public {
         // check project id
-        require(projects[projectId].id != 0, "projectId does not exist");
+        require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
         // reset project info
         projects[projectId].requestProposalID = 0;
 
@@ -189,7 +192,7 @@ contract Blueprint {
 
         // check project id
 
-        require(projects[projectId].id != 0, "projectId does not exist");
+        require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
 
         require(bytes(serverURL).length > 0, "serverURL is empty");
         require(bytes(base64RecParam).length > 0, "base64RecParam is empty");
@@ -267,7 +270,7 @@ contract Blueprint {
         string memory serverURL
     ) internal returns (bytes32 requestID){
 
-        require(projects[projectId].id != 0, "projectId does not exist");
+        require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
 
         require(bytes(serverURL).length > 0, "serverURL is empty");
         require(bytes(base64Proposal).length > 0, "base64Proposal is empty");
@@ -330,7 +333,7 @@ contract Blueprint {
 
 
     function submitProofOfDeployment(bytes32 projectId, bytes32 requestID, string memory proofBase64) public {
-        require(projects[projectId].id != 0, "projectId does not exist");
+        require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
 
         require(requestID.length > 0, "requestID is empty");
         require(requestDeploymentStatus[requestID].status != Status.Init, "request ID not exit");
@@ -348,7 +351,7 @@ contract Blueprint {
     }
 
     function submitDeploymentRequest(bytes32 projectId, bytes32 requestID) public returns (bool isAccepted) {
-        require(projects[projectId].id != 0, "projectId does not exist");
+        require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
 
         require(requestID.length > 0, "requestID is empty");
         require(requestDeploymentStatus[requestID].status != Status.Init, "requestID does not exist");
@@ -395,7 +398,7 @@ contract Blueprint {
     // get project info
     function getProjectInfo(bytes32 projectId) public view returns (address,bytes32,bytes32) {
 
-        require(projects[projectId].id != 0, "projectId does not exist");
+        require(projects[projectId].id != 0 , "projectId does not exist");
 
         return (projects[projectId].proposedSolverAddr, projects[projectId].requestProposalID,  projects[projectId].requestDeploymentID);
     }
