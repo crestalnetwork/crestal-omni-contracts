@@ -18,7 +18,7 @@ contract Blueprint {
     }
 
     struct Project {
-        bytes32 id ;
+        bytes32 id;
         bytes32 requestProposalID;
         bytes32 requestDeploymentID;
         address proposedSolverAddr;
@@ -113,7 +113,6 @@ contract Blueprint {
         solverReputation[addr] = reputation;
     }
 
-
     function setProjectId(bytes32 projectId) internal {
         // check project id
         require(projects[projectId].id == 0, "projectId already exist");
@@ -151,15 +150,15 @@ contract Blueprint {
     // https://github.com/crestalnetwork/crestal-dashboard-backend/blob/testnet-dev/listen/type.go#L9
     // example: {"type":"DA","latency":5,"max_throughput":20,"finality_time":10,"block_time":5,"created_at":"0001-01-01T00:00:00Z"}
     // associated base64 string: eyJ0eXBlIjoiREEiLCJsYXRlbmN5Ijo1LCJtYXhfdGhyb3VnaHB1dCI6MjAsImZpbmFsaXR5X3RpbWUiOjEwLCJibG9ja190aW1lIjo1LCJjcmVhdGVkX2F0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQ
+
     function createProposalRequest(bytes32 projectId, string memory base64RecParam, string memory serverURL)
-    public
-    returns (bytes32 requestID)
+        public
+        returns (bytes32 requestID)
     {
-        requestID = proposalRequest(projectId,dummyAddress, base64RecParam, serverURL);
+        requestID = proposalRequest(projectId, dummyAddress, base64RecParam, serverURL);
 
         emit RequestProposal(projectId, msg.sender, requestID, base64RecParam, serverURL);
     }
-
 
     function createPrivateProposalRequest(
         bytes32 projectId,
@@ -167,29 +166,26 @@ contract Blueprint {
         string memory base64RecParam,
         string memory serverURL
     ) public returns (bytes32 requestID) {
-
-        requestID = proposalRequest(projectId,privateSolverAddress, base64RecParam, serverURL);
+        requestID = proposalRequest(projectId, privateSolverAddress, base64RecParam, serverURL);
 
         emit RequestPrivateProposal(projectId, msg.sender, privateSolverAddress, requestID, base64RecParam, serverURL);
     }
 
-
-    function createProjectIDAndProposalRequest(bytes32 projectId,string memory base64RecParam, string memory serverURL) public {
-
+    function createProjectIDAndProposalRequest(bytes32 projectId, string memory base64RecParam, string memory serverURL)
+        public
+    {
         // set project id
         setProjectId(projectId);
         // create proposal request
         createProposalRequest(projectId, base64RecParam, serverURL);
     }
 
-
     function proposalRequest(
         bytes32 projectId,
         address solverAddress,
         string memory base64RecParam,
         string memory serverURL
-    ) internal returns (bytes32 requestID){
-
+    ) internal returns (bytes32 requestID) {
         // check project id
 
         require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
@@ -217,9 +213,7 @@ contract Blueprint {
             requestSolver[requestID] = solverAddress;
         }
 
-
         return requestID;
-
     }
 
     // issue DeploymentRequest
@@ -232,14 +226,12 @@ contract Blueprint {
         string memory base64Proposal,
         string memory serverURL
     ) public returns (bytes32 requestID) {
-
         require(solverAddress != address(0), "solverAddress is not valid");
 
         requestID = DeploymentRequest(projectId, solverAddress, dummyAddress, base64Proposal, serverURL);
 
         emit RequestDeployment(projectId, msg.sender, solverAddress, requestID, base64Proposal, serverURL);
     }
-
 
     function createPrivateDeploymentRequest(
         bytes32 projectId,
@@ -248,7 +240,6 @@ contract Blueprint {
         string memory base64Proposal,
         string memory serverURL
     ) public returns (bytes32 requestID) {
-
         require(solverAddress != address(0), "solverAddress is not valid");
 
         requestID = DeploymentRequest(projectId, solverAddress, privateWorkerAddress, base64Proposal, serverURL);
@@ -261,15 +252,13 @@ contract Blueprint {
         emit AcceptDeployment(projectId, requestID, privateWorkerAddress);
     }
 
-
     function DeploymentRequest(
         bytes32 projectId,
         address solverAddress,
         address workerAddress,
         string memory base64Proposal,
         string memory serverURL
-    ) internal returns (bytes32 requestID){
-
+    ) internal returns (bytes32 requestID) {
         require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
 
         require(bytes(serverURL).length > 0, "serverURL is empty");
@@ -278,10 +267,8 @@ contract Blueprint {
         // generate unique message hash
         requestID = keccak256(abi.encodePacked(block.timestamp, msg.sender, base64Proposal, block.chainid));
 
-
         // check request id is created or not
         require(projects[projectId].requestDeploymentID == 0, "deployment request id already exist");
-
 
         latestDeploymentRequestID[msg.sender] = requestID;
 
@@ -303,7 +290,6 @@ contract Blueprint {
             deploymentStatus.deployWorkerAddr = workerAddress;
 
             requestDeploymentStatus[requestID] = deploymentStatus;
-
         }
 
         // update project info
@@ -314,23 +300,19 @@ contract Blueprint {
         return requestID;
     }
 
-
     function createProjectIDAndDeploymentRequest(
         bytes32 projectId,
         string memory base64Proposal,
         string memory serverURL
-    )  public returns (bytes32 requestID) {
-
+    ) public returns (bytes32 requestID) {
         // set project id
         setProjectId(projectId);
 
         // create deployment request without solver recommendation
-        requestID =  DeploymentRequest(projectId, dummyAddress, dummyAddress, base64Proposal, serverURL);
-
+        requestID = DeploymentRequest(projectId, dummyAddress, dummyAddress, base64Proposal, serverURL);
 
         emit RequestDeployment(projectId, msg.sender, dummyAddress, requestID, base64Proposal, serverURL);
     }
-
 
     function submitProofOfDeployment(bytes32 projectId, bytes32 requestID, string memory proofBase64) public {
         require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
@@ -360,10 +342,7 @@ contract Blueprint {
             "requestID already picked by another worker, try a different requestID"
         );
 
-        require(
-            requestDeploymentStatus[requestID].status != Status.GeneratedProof,
-            "requestID already submit proof"
-        );
+        require(requestDeploymentStatus[requestID].status != Status.GeneratedProof, "requestID already submit proof");
 
         // currently, do first come, first server, will do a better way in the future
         requestDeploymentStatus[requestID].status = Status.Pickup;
@@ -396,11 +375,13 @@ contract Blueprint {
     }
 
     // get project info
-    function getProjectInfo(bytes32 projectId) public view returns (address,bytes32,bytes32) {
+    function getProjectInfo(bytes32 projectId) public view returns (address, bytes32, bytes32) {
+        require(projects[projectId].id != 0, "projectId does not exist");
 
-        require(projects[projectId].id != 0 , "projectId does not exist");
-
-        return (projects[projectId].proposedSolverAddr, projects[projectId].requestProposalID,  projects[projectId].requestDeploymentID);
+        return (
+            projects[projectId].proposedSolverAddr,
+            projects[projectId].requestProposalID,
+            projects[projectId].requestDeploymentID
+        );
     }
-
 }
