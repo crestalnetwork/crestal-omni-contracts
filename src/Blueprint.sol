@@ -17,6 +17,27 @@ contract Blueprint {
         address deployWorkerAddr;
     }
 
+    string public VERSION;
+    uint256 public factor;
+    uint256 public totalProposalRequest;
+    uint256 public totalDeploymentRequest;
+
+    mapping(address => bytes32) public latestProposalRequestID;
+    mapping(address => bytes32) public latestDeploymentRequestID;
+    mapping(address => bytes32) public latestProjectID;
+
+    mapping(address => uint256) public solverReputation;
+    mapping(address => uint256) public workerReputation;
+    mapping(bytes32 => DeploymentStatus) public requestDeploymentStatus;
+
+    mapping(bytes32 => string) private deploymentProof;
+    mapping(bytes32 => address) private requestSolver;
+    mapping(bytes32 => address) private requestWorker;
+    mapping(bytes32 => address) private projectIDs;
+
+    // keep old variable in order so that it can be compatible with old contract
+
+    // new variable and struct
     struct Project {
         bytes32 id;
         bytes32 requestProposalID;
@@ -24,32 +45,10 @@ contract Blueprint {
         address proposedSolverAddr;
     }
 
-    string public VERSION;
-    uint256 public factor;
-    uint256 public totalProposalRequest;
-    uint256 public totalDeploymentRequest;
-    address public dummyAddress = address(0);
-
-    // user to retrieve request id via wallet address
-    mapping(address => bytes32) public latestProposalRequestID;
-    mapping(address => bytes32) public latestDeploymentRequestID;
-    mapping(address => bytes32) public latestProjectID;
-
-    mapping(address => uint256) public solverReputation;
-    mapping(address => uint256) public workerReputation;
-    // deployment status
-    mapping(bytes32 => DeploymentStatus) public requestDeploymentStatus;
-    // proof of deployment
-    mapping(bytes32 => string) private deploymentProof;
-    // private worker and solver
-    mapping(bytes32 => address) private requestSolver;
-    mapping(bytes32 => address) private requestWorker;
+    address public constant dummyAddress = address(0);
 
     // project map
     mapping(bytes32 => Project) private projects;
-
-    // compatible with old contract, not change stores
-    mapping(bytes32 => address) private projectIDs;
 
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);
     event RequestProposal(
