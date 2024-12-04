@@ -155,8 +155,8 @@ contract Blueprint {
     // associated base64 string: eyJ0eXBlIjoiREEiLCJsYXRlbmN5Ijo1LCJtYXhfdGhyb3VnaHB1dCI6MjAsImZpbmFsaXR5X3RpbWUiOjEwLCJibG9ja190aW1lIjo1LCJjcmVhdGVkX2F0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQ
 
     function createProposalRequest(bytes32 projectId, string memory base64RecParam, string memory serverURL)
-    public
-    returns (bytes32 requestID)
+        public
+        returns (bytes32 requestID)
     {
         requestID = proposalRequest(projectId, dummyAddress, base64RecParam, serverURL);
 
@@ -175,7 +175,7 @@ contract Blueprint {
     }
 
     function createProjectIDAndProposalRequest(bytes32 projectId, string memory base64RecParam, string memory serverURL)
-    public
+        public
     {
         // set project id
         setProjectId(projectId);
@@ -232,7 +232,7 @@ contract Blueprint {
         require(solverAddress != address(0), "solverAddress is not valid");
 
         (bytes32 requestID, bytes32 projectDeploymentId) =
-                        DeploymentRequest(projectId, solverAddress, dummyAddress, base64Proposal, serverURL, 0);
+            DeploymentRequest(projectId, solverAddress, dummyAddress, base64Proposal, serverURL, 0);
 
         projects[projectId].requestDeploymentID = projectDeploymentId;
 
@@ -252,12 +252,11 @@ contract Blueprint {
         require(solverAddress != address(0), "solverAddress is not valid");
         require(base64Proposals.length != 0, "base64Proposals array is empty");
 
-
         bytes32 projectDeploymentID;
 
         for (uint256 i = 0; i < base64Proposals.length; ++i) {
             (bytes32 requestID, bytes32 projectDeploymentId) =
-                            DeploymentRequest(projectId, solverAddress, dummyAddress, base64Proposals[i], serverURL, i);
+                DeploymentRequest(projectId, solverAddress, dummyAddress, base64Proposals[i], serverURL, i);
 
             if (projectDeploymentID != 0) {
                 deploymentIdList[projectDeploymentID].push(requestID);
@@ -284,7 +283,7 @@ contract Blueprint {
         require(solverAddress != address(0), "solverAddress is not valid");
 
         (bytes32 requestID, bytes32 projectDeploymentId) =
-                        DeploymentRequest(projectId, solverAddress, privateWorkerAddress, base64Proposal, serverURL, 0);
+            DeploymentRequest(projectId, solverAddress, privateWorkerAddress, base64Proposal, serverURL, 0);
 
         projects[projectId].requestDeploymentID = projectDeploymentId;
 
@@ -314,7 +313,7 @@ contract Blueprint {
 
         for (uint256 i = 0; i < base64Proposals.length; ++i) {
             (bytes32 requestID, bytes32 projectDeploymentId) =
-                            DeploymentRequest(projectId, solverAddress, privateWorkerAddress, base64Proposals[i], serverURL, i);
+                DeploymentRequest(projectId, solverAddress, privateWorkerAddress, base64Proposals[i], serverURL, i);
 
             if (projectDeploymentID != 0) {
                 deploymentIdList[projectDeploymentID].push(requestID);
@@ -346,7 +345,7 @@ contract Blueprint {
 
         // generate project used deployment id that linked to many deploymentsID associated with different service id
         projectDeploymentId =
-                        keccak256(abi.encodePacked(block.timestamp, msg.sender, base64Proposal, block.chainid, projectId));
+            keccak256(abi.encodePacked(block.timestamp, msg.sender, base64Proposal, block.chainid, projectId));
 
         // check projectDeploymentId id is created or not
         require(projects[projectId].requestDeploymentID == 0, "deployment request id already exist");
@@ -393,7 +392,7 @@ contract Blueprint {
 
         // create deployment request without solver recommendation
         (bytes32 requestID, bytes32 projectDeploymentId) =
-                        DeploymentRequest(projectId, dummyAddress, dummyAddress, base64Proposal, serverURL, 0);
+            DeploymentRequest(projectId, dummyAddress, dummyAddress, base64Proposal, serverURL, 0);
 
         projects[projectId].requestDeploymentID = projectDeploymentId;
 
@@ -469,10 +468,6 @@ contract Blueprint {
         require(projects[projectId].id != 0, "projectId does not exist");
         bytes32[] memory requestDeploymentIDs = deploymentIdList[projects[projectId].requestDeploymentID];
 
-        return (
-            projects[projectId].proposedSolverAddr,
-            projects[projectId].requestProposalID,
-            requestDeploymentIDs
-        );
+        return (projects[projectId].proposedSolverAddr, projects[projectId].requestProposalID, requestDeploymentIDs);
     }
 }
