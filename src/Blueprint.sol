@@ -44,7 +44,6 @@ contract Blueprint {
         mapping(bytes32 => uint256) requestDeploymentMp;
         address proposedSolverAddr;
         uint256 lastUpdatedAt;
-
         // this maybe need in the future to retrieve all request proposal and deployment id
         bytes32[] requestProposalIdList;
         bytes32[] requestDeploymentIdList;
@@ -122,7 +121,7 @@ contract Blueprint {
         require(projects[projectId].id == 0, "projectId already exist");
 
         // create a project storage
-        Project storage project =  projects[projectId];
+        Project storage project = projects[projectId];
         project.id = projectId;
         project.lastUpdatedAt = block.timestamp;
 
@@ -154,8 +153,8 @@ contract Blueprint {
     // associated base64 string: eyJ0eXBlIjoiREEiLCJsYXRlbmN5Ijo1LCJtYXhfdGhyb3VnaHB1dCI6MjAsImZpbmFsaXR5X3RpbWUiOjEwLCJibG9ja190aW1lIjo1LCJjcmVhdGVkX2F0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQ
 
     function createProposalRequest(bytes32 projectId, string memory base64RecParam, string memory serverURL)
-    public
-    returns (bytes32 requestID)
+        public
+        returns (bytes32 requestID)
     {
         requestID = proposalRequest(projectId, dummyAddress, base64RecParam, serverURL);
 
@@ -174,7 +173,7 @@ contract Blueprint {
     }
 
     function createProjectIDAndProposalRequest(bytes32 projectId, string memory base64RecParam, string memory serverURL)
-    public
+        public
     {
         // set project id
         setProjectId(projectId);
@@ -377,7 +376,11 @@ contract Blueprint {
     }
 
     // get project info
-    function getProjectInfo(bytes32 projectId) public view returns (address,uint256, bytes32[] memory, bytes32[] memory) {
+    function getProjectInfo(bytes32 projectId)
+        public
+        view
+        returns (address, uint256, bytes32[] memory, bytes32[] memory)
+    {
         require(projects[projectId].id != 0, "projectId does not exist");
 
         bytes32[] memory requestProposalIDs = projects[projectId].requestProposalIdList;
