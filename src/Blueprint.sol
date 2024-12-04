@@ -40,9 +40,14 @@ contract Blueprint {
     // new variable and struct
     struct Project {
         bytes32 id;
-        bytes32 requestProposalID;
-        bytes32 requestDeploymentID;
+        mapping(bytes32 => uint256) requestProposalMp;
+        mapping(bytes32 => uint256) requestDeploymentMp;
         address proposedSolverAddr;
+        uint256 lastUpdatedAt;
+
+        // this maybe need in the future to retrieve all request proposal and deployment id
+        bytes32[] requestProposalIdList;
+        bytes32[] requestDeploymentIdList;
     }
 
     address public constant dummyAddress = address(0);
@@ -116,10 +121,10 @@ contract Blueprint {
         // check project id
         require(projects[projectId].id == 0, "projectId already exist");
 
-        Project memory project;
+        // create a project storage
+        Project storage project =  projects[projectId];
         project.id = projectId;
-        // set project info into mapping
-        projects[projectId] = project;
+        project.lastUpdatedAt = block.timestamp;
 
         // set latest project
         latestProjectID[msg.sender] = projectId;
@@ -138,9 +143,7 @@ contract Blueprint {
         // check project id
         require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
         // reset project info
-        projects[projectId].requestProposalID = 0;
-
-        projects[projectId].requestDeploymentID = 0;
+        projects[projectId].lastUpdatedAt = block.timestamp;
 
         projects[projectId].proposedSolverAddr = dummyAddress;
     }
@@ -151,8 +154,8 @@ contract Blueprint {
     // associated base64 string: eyJ0eXBlIjoiREEiLCJsYXRlbmN5Ijo1LCJtYXhfdGhyb3VnaHB1dCI6MjAsImZpbmFsaXR5X3RpbWUiOjEwLCJibG9ja190aW1lIjo1LCJjcmVhdGVkX2F0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQ
 
     function createProposalRequest(bytes32 projectId, string memory base64RecParam, string memory serverURL)
-        public
-        returns (bytes32 requestID)
+    public
+    returns (bytes32 requestID)
     {
         requestID = proposalRequest(projectId, dummyAddress, base64RecParam, serverURL);
 
@@ -171,7 +174,7 @@ contract Blueprint {
     }
 
     function createProjectIDAndProposalRequest(bytes32 projectId, string memory base64RecParam, string memory serverURL)
-        public
+    public
     {
         // set project id
         setProjectId(projectId);
@@ -196,13 +199,13 @@ contract Blueprint {
         requestID = keccak256(abi.encodePacked(block.timestamp, msg.sender, base64RecParam, block.chainid));
 
         // check request id is created or not
-        require(projects[projectId].requestProposalID == 0, "proposasl request id already exist");
+        require(projects[projectId].requestProposalMp[requestID] == 0, "proposasl request id already exist");
 
         // FIXME: This prevents a msg.sender to create multiple requests at the same time?
         // For different projects, a solver is allowed to create one (latest proposal) for each.
         latestProposalRequestID[msg.sender] = requestID;
 
-        projects[projectId].requestProposalID = requestID;
+        projects[projectId].requestProposalMp[requestID] = block.timestamp;
 
         totalProposalRequest++;
 
@@ -267,7 +270,7 @@ contract Blueprint {
         requestID = keccak256(abi.encodePacked(block.timestamp, msg.sender, base64Proposal, block.chainid));
 
         // check request id is created or not
-        require(projects[projectId].requestDeploymentID == 0, "deployment request id already exist");
+        require(projects[projectId].requestDeploymentMp[requestID] == 0, "deployment request id already exist");
 
         latestDeploymentRequestID[msg.sender] = requestID;
 
@@ -292,7 +295,7 @@ contract Blueprint {
         }
 
         // update project info
-        projects[projectId].requestDeploymentID = requestID;
+        projects[projectId].requestDeploymentMp[requestID] = block.timestamp;
 
         projects[projectId].proposedSolverAddr = solverAddress;
 
@@ -374,13 +377,17 @@ contract Blueprint {
     }
 
     // get project info
-    function getProjectInfo(bytes32 projectId) public view returns (address, bytes32, bytes32) {
+    function getProjectInfo(bytes32 projectId) public view returns (address,uint256, bytes32[] memory, bytes32[] memory) {
         require(projects[projectId].id != 0, "projectId does not exist");
+
+        bytes32[] memory requestProposalIDs = projects[projectId].requestProposalIdList;
+        bytes32[] memory requestDeploymentIds = projects[projectId].requestDeploymentIdList;
 
         return (
             projects[projectId].proposedSolverAddr,
-            projects[projectId].requestProposalID,
-            projects[projectId].requestDeploymentID
+            projects[projectId].lastUpdatedAt,
+            requestProposalIDs,
+            requestDeploymentIds
         );
     }
 }
