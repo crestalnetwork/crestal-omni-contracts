@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.26;
 
+pragma experimental ABIEncoderV2;
+
 contract Blueprint {
     enum Status {
         Init,
@@ -49,6 +51,8 @@ contract Blueprint {
 
     // project map
     mapping(bytes32 => Project) private projects;
+
+    mapping(bytes32 => bytes32[]) public deploymentIdList;
 
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);
     event RequestProposal(
@@ -151,8 +155,8 @@ contract Blueprint {
     // associated base64 string: eyJ0eXBlIjoiREEiLCJsYXRlbmN5Ijo1LCJtYXhfdGhyb3VnaHB1dCI6MjAsImZpbmFsaXR5X3RpbWUiOjEwLCJibG9ja190aW1lIjo1LCJjcmVhdGVkX2F0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQ
 
     function createProposalRequest(bytes32 projectId, string memory base64RecParam, string memory serverURL)
-        public
-        returns (bytes32 requestID)
+    public
+    returns (bytes32 requestID)
     {
         requestID = proposalRequest(projectId, dummyAddress, base64RecParam, serverURL);
 
@@ -171,7 +175,7 @@ contract Blueprint {
     }
 
     function createProjectIDAndProposalRequest(bytes32 projectId, string memory base64RecParam, string memory serverURL)
-        public
+    public
     {
         // set project id
         setProjectId(projectId);
@@ -224,12 +228,50 @@ contract Blueprint {
         address solverAddress,
         string memory base64Proposal,
         string memory serverURL
-    ) public returns (bytes32 requestID) {
+    ) public returns (bytes32) {
         require(solverAddress != address(0), "solverAddress is not valid");
 
-        requestID = DeploymentRequest(projectId, solverAddress, dummyAddress, base64Proposal, serverURL);
+        (bytes32 requestID, bytes32 projectDeploymentId) =
+                        DeploymentRequest(projectId, solverAddress, dummyAddress, base64Proposal, serverURL, 0);
+
+        projects[projectId].requestDeploymentID = projectDeploymentId;
+
+        deploymentIdList[projectDeploymentId].push(requestID);
 
         emit RequestDeployment(projectId, msg.sender, solverAddress, requestID, base64Proposal, serverURL);
+
+        return requestID;
+    }
+
+    function createMultipleDeploymentRequest(
+        bytes32 projectId,
+        address solverAddress,
+        string[] memory base64Proposals,
+        string memory serverURL
+    ) public returns (bytes32) {
+        require(solverAddress != address(0), "solverAddress is not valid");
+        require(base64Proposals.length != 0, "base64Proposals array is empty");
+
+
+        bytes32 projectDeploymentID;
+
+        for (uint256 i = 0; i < base64Proposals.length; ++i) {
+            (bytes32 requestID, bytes32 projectDeploymentId) =
+                            DeploymentRequest(projectId, solverAddress, dummyAddress, base64Proposals[i], serverURL, i);
+
+            if (projectDeploymentID != 0) {
+                deploymentIdList[projectDeploymentID].push(requestID);
+            } else {
+                projectDeploymentID = projectDeploymentId;
+                deploymentIdList[projectDeploymentID].push(requestID);
+            }
+
+            emit RequestDeployment(projectId, msg.sender, solverAddress, requestID, base64Proposals[i], serverURL);
+        }
+
+        projects[projectId].requestDeploymentID = projectDeploymentID;
+
+        return projectDeploymentID;
     }
 
     function createPrivateDeploymentRequest(
@@ -238,10 +280,15 @@ contract Blueprint {
         address privateWorkerAddress,
         string memory base64Proposal,
         string memory serverURL
-    ) public returns (bytes32 requestID) {
+    ) public returns (bytes32) {
         require(solverAddress != address(0), "solverAddress is not valid");
 
-        requestID = DeploymentRequest(projectId, solverAddress, privateWorkerAddress, base64Proposal, serverURL);
+        (bytes32 requestID, bytes32 projectDeploymentId) =
+                        DeploymentRequest(projectId, solverAddress, privateWorkerAddress, base64Proposal, serverURL, 0);
+
+        projects[projectId].requestDeploymentID = projectDeploymentId;
+
+        deploymentIdList[projectDeploymentId].push(requestID);
 
         emit RequestPrivateDeployment(
             projectId, msg.sender, privateWorkerAddress, solverAddress, requestID, base64Proposal, serverURL
@@ -249,6 +296,39 @@ contract Blueprint {
 
         // emit accept deployment event since this deployment request is accepted by blueprint
         emit AcceptDeployment(projectId, requestID, privateWorkerAddress);
+
+        return requestID;
+    }
+
+    function createMultiplePrivateDeploymentRequest(
+        bytes32 projectId,
+        address solverAddress,
+        address privateWorkerAddress,
+        string[] memory base64Proposals,
+        string memory serverURL
+    ) public returns (bytes32) {
+        require(solverAddress != address(0), "solverAddress is not valid");
+        require(base64Proposals.length != 0, "base64Proposals array is empty");
+
+        bytes32 projectDeploymentID;
+
+        for (uint256 i = 0; i < base64Proposals.length; ++i) {
+            (bytes32 requestID, bytes32 projectDeploymentId) =
+                            DeploymentRequest(projectId, solverAddress, privateWorkerAddress, base64Proposals[i], serverURL, i);
+
+            if (projectDeploymentID != 0) {
+                deploymentIdList[projectDeploymentID].push(requestID);
+            } else {
+                projectDeploymentID = projectDeploymentId;
+                deploymentIdList[projectDeploymentID].push(requestID);
+            }
+
+            emit RequestDeployment(projectId, msg.sender, solverAddress, requestID, base64Proposals[i], serverURL);
+        }
+
+        projects[projectId].requestDeploymentID = projectDeploymentID;
+
+        return projectDeploymentID;
     }
 
     function DeploymentRequest(
@@ -256,18 +336,23 @@ contract Blueprint {
         address solverAddress,
         address workerAddress,
         string memory base64Proposal,
-        string memory serverURL
-    ) internal returns (bytes32 requestID) {
+        string memory serverURL,
+        uint256 index
+    ) internal returns (bytes32 requestID, bytes32 projectDeploymentId) {
         require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
 
         require(bytes(serverURL).length > 0, "serverURL is empty");
         require(bytes(base64Proposal).length > 0, "base64Proposal is empty");
 
-        // generate unique message hash
-        requestID = keccak256(abi.encodePacked(block.timestamp, msg.sender, base64Proposal, block.chainid));
+        // generate project used deployment id that linked to many deploymentsID associated with different service id
+        projectDeploymentId =
+                        keccak256(abi.encodePacked(block.timestamp, msg.sender, base64Proposal, block.chainid, projectId));
 
-        // check request id is created or not
+        // check projectDeploymentId id is created or not
         require(projects[projectId].requestDeploymentID == 0, "deployment request id already exist");
+
+        // generate unique deplopyment message hash
+        requestID = keccak256(abi.encodePacked(block.timestamp, msg.sender, base64Proposal, block.chainid, index));
 
         latestDeploymentRequestID[msg.sender] = requestID;
 
@@ -292,25 +377,31 @@ contract Blueprint {
         }
 
         // update project info
-        projects[projectId].requestDeploymentID = requestID;
 
         projects[projectId].proposedSolverAddr = solverAddress;
 
-        return requestID;
+        return (requestID, projectDeploymentId);
     }
 
     function createProjectIDAndDeploymentRequest(
         bytes32 projectId,
         string memory base64Proposal,
         string memory serverURL
-    ) public returns (bytes32 requestID) {
+    ) public returns (bytes32) {
         // set project id
         setProjectId(projectId);
 
         // create deployment request without solver recommendation
-        requestID = DeploymentRequest(projectId, dummyAddress, dummyAddress, base64Proposal, serverURL);
+        (bytes32 requestID, bytes32 projectDeploymentId) =
+                        DeploymentRequest(projectId, dummyAddress, dummyAddress, base64Proposal, serverURL, 0);
+
+        projects[projectId].requestDeploymentID = projectDeploymentId;
+
+        deploymentIdList[projectDeploymentId].push(requestID);
 
         emit RequestDeployment(projectId, msg.sender, dummyAddress, requestID, base64Proposal, serverURL);
+
+        return requestID;
     }
 
     function submitProofOfDeployment(bytes32 projectId, bytes32 requestID, string memory proofBase64) public {
@@ -374,13 +465,14 @@ contract Blueprint {
     }
 
     // get project info
-    function getProjectInfo(bytes32 projectId) public view returns (address, bytes32, bytes32) {
+    function getProjectInfo(bytes32 projectId) public view returns (address, bytes32, bytes32[] memory) {
         require(projects[projectId].id != 0, "projectId does not exist");
+        bytes32[] memory requestDeploymentIDs = deploymentIdList[projects[projectId].requestDeploymentID];
 
         return (
             projects[projectId].proposedSolverAddr,
             projects[projectId].requestProposalID,
-            projects[projectId].requestDeploymentID
+            requestDeploymentIDs
         );
     }
 }
