@@ -11,9 +11,6 @@ contract BlueprintV2 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Blue
         __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();
         VERSION = "2.0.0";
-        factor = 10000;
-        totalProposalRequest = 0;
-        totalDeploymentRequest = 0;
     }
 
     // The _authorizeUpgrade function is required by the UUPSUpgradeable contract

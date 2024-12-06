@@ -118,7 +118,7 @@ contract Blueprint {
 
     function setProjectId(bytes32 projectId) internal {
         // check project id
-        require(projects[projectId].id == 0, "projectId already exist");
+        require(projects[projectId].id == 0, "projectId already exists");
 
         Project memory project;
         project.id = projectId;
@@ -200,7 +200,8 @@ contract Blueprint {
         requestID = keccak256(abi.encodePacked(block.timestamp, msg.sender, base64RecParam, block.chainid));
 
         // check request id is created or not
-        require(projects[projectId].requestProposalID == 0, "proposasl request id already exist");
+        // if it is created, then we need to lock it, not allow user to trigger proposal request again
+        require(projects[projectId].requestProposalID == 0, "proposal requestID already exists");
 
         // FIXME: This prevents a msg.sender to create multiple requests at the same time?
         // For different projects, a solver is allowed to create one (latest proposal) for each.
@@ -232,10 +233,12 @@ contract Blueprint {
         require(solverAddress != address(0), "solverAddress is not valid");
 
         (bytes32 requestID, bytes32 projectDeploymentId) =
-            DeploymentRequest(projectId, solverAddress, dummyAddress, base64Proposal, serverURL, 0);
+            deploymentRequest(projectId, solverAddress, dummyAddress, base64Proposal, serverURL, 0);
 
+        // once we got request deploymentID, then we set project requestDeploymentID, which points to a list of deploymentID
         projects[projectId].requestDeploymentID = projectDeploymentId;
 
+        // push request deploymentID into map, link to a project
         deploymentIdList[projectDeploymentId].push(requestID);
 
         emit RequestDeployment(projectId, msg.sender, solverAddress, requestID, base64Proposal, serverURL);
@@ -256,11 +259,12 @@ contract Blueprint {
 
         for (uint256 i = 0; i < base64Proposals.length; ++i) {
             (bytes32 requestID, bytes32 projectDeploymentId) =
-                DeploymentRequest(projectId, solverAddress, dummyAddress, base64Proposals[i], serverURL, i);
+                deploymentRequest(projectId, solverAddress, dummyAddress, base64Proposals[i], serverURL, i);
 
             if (projectDeploymentID != 0) {
                 deploymentIdList[projectDeploymentID].push(requestID);
             } else {
+                // push request deploymentID into map, link to a project
                 projectDeploymentID = projectDeploymentId;
                 deploymentIdList[projectDeploymentID].push(requestID);
             }
@@ -268,6 +272,7 @@ contract Blueprint {
             emit RequestDeployment(projectId, msg.sender, solverAddress, requestID, base64Proposals[i], serverURL);
         }
 
+        // once we got request deploymentID, then we set project requestDeploymentID, which points to a list of deploymentID
         projects[projectId].requestDeploymentID = projectDeploymentID;
 
         return projectDeploymentID;
@@ -283,10 +288,12 @@ contract Blueprint {
         require(solverAddress != address(0), "solverAddress is not valid");
 
         (bytes32 requestID, bytes32 projectDeploymentId) =
-            DeploymentRequest(projectId, solverAddress, privateWorkerAddress, base64Proposal, serverURL, 0);
+            deploymentRequest(projectId, solverAddress, privateWorkerAddress, base64Proposal, serverURL, 0);
 
+        // once we got request deploymentID, then we set project requestDeploymentID, which points to a list of deploymentID
         projects[projectId].requestDeploymentID = projectDeploymentId;
 
+        // push request deploymentID into map, link to a project
         deploymentIdList[projectDeploymentId].push(requestID);
 
         emit RequestPrivateDeployment(
@@ -313,24 +320,29 @@ contract Blueprint {
 
         for (uint256 i = 0; i < base64Proposals.length; ++i) {
             (bytes32 requestID, bytes32 projectDeploymentId) =
-                DeploymentRequest(projectId, solverAddress, privateWorkerAddress, base64Proposals[i], serverURL, i);
+                deploymentRequest(projectId, solverAddress, privateWorkerAddress, base64Proposals[i], serverURL, i);
 
             if (projectDeploymentID != 0) {
                 deploymentIdList[projectDeploymentID].push(requestID);
             } else {
                 projectDeploymentID = projectDeploymentId;
+                // push request deploymentID into map, link to a project
                 deploymentIdList[projectDeploymentID].push(requestID);
             }
 
             emit RequestDeployment(projectId, msg.sender, solverAddress, requestID, base64Proposals[i], serverURL);
+
+            // emit accept deployment event since this deployment request is accepted by blueprint
+            emit AcceptDeployment(projectId, requestID, privateWorkerAddress);
         }
 
+        // once we got request deploymentID, then we set project requestDeploymentID, which points to a list of deploymentID
         projects[projectId].requestDeploymentID = projectDeploymentID;
 
         return projectDeploymentID;
     }
 
-    function DeploymentRequest(
+    function deploymentRequest(
         bytes32 projectId,
         address solverAddress,
         address workerAddress,
@@ -348,9 +360,10 @@ contract Blueprint {
             keccak256(abi.encodePacked(block.timestamp, msg.sender, base64Proposal, block.chainid, projectId));
 
         // check projectDeploymentId id is created or not
-        require(projects[projectId].requestDeploymentID == 0, "deployment request id already exist");
+        // if it is created, which means project is start deployment process, should lock
+        require(projects[projectId].requestDeploymentID == 0, "deployment requestID already exists");
 
-        // generate unique deplopyment message hash
+        // generate unique deployment requestID message hash
         requestID = keccak256(abi.encodePacked(block.timestamp, msg.sender, base64Proposal, block.chainid, index));
 
         latestDeploymentRequestID[msg.sender] = requestID;
@@ -368,15 +381,14 @@ contract Blueprint {
             requestDeploymentStatus[requestID] = deploymentStatus;
         } else {
             // private deployment request
-            // pick up deployment status since this is private deployment request, which can be picked only by refered worker
+            // set pick up deployment status since this is private deployment request, which can be picked only by designated worker
             deploymentStatus.status = Status.Pickup;
             deploymentStatus.deployWorkerAddr = workerAddress;
 
             requestDeploymentStatus[requestID] = deploymentStatus;
         }
 
-        // update project info
-
+        // update project solver info
         projects[projectId].proposedSolverAddr = solverAddress;
 
         return (requestID, projectDeploymentId);
@@ -390,9 +402,10 @@ contract Blueprint {
         // set project id
         setProjectId(projectId);
 
-        // create deployment request without solver recommendation
+        // create deployment request without solver recommendation, so leave solver address as dummyAddress
+        // since this is public deployment request leave worker address as dummyAddress
         (bytes32 requestID, bytes32 projectDeploymentId) =
-            DeploymentRequest(projectId, dummyAddress, dummyAddress, base64Proposal, serverURL, 0);
+            deploymentRequest(projectId, dummyAddress, dummyAddress, base64Proposal, serverURL, 0);
 
         projects[projectId].requestDeploymentID = projectDeploymentId;
 
@@ -403,11 +416,37 @@ contract Blueprint {
         return requestID;
     }
 
+    function createProjectIDAndPrivateDeploymentRequest(
+        bytes32 projectId,
+        string memory base64Proposal,
+        address privateWorkerAddress,
+        string memory serverURL
+    ) public returns (bytes32) {
+        // set project id
+        setProjectId(projectId);
+
+        // create deployment request without solver recommendation, so leave solver address as dummyAddress
+        // since this is public deployment request leave worker address as dummyAddress
+        (bytes32 requestID, bytes32 projectDeploymentId) =
+                        deploymentRequest(projectId, dummyAddress, privateWorkerAddress, base64Proposal, serverURL, 0);
+
+        projects[projectId].requestDeploymentID = projectDeploymentId;
+
+        deploymentIdList[projectDeploymentId].push(requestID);
+
+        emit RequestDeployment(projectId, msg.sender, dummyAddress, requestID, base64Proposal, serverURL);
+
+        // emit accept deployment event since this deployment request is accepted by blueprint
+        emit AcceptDeployment(projectId, requestID, privateWorkerAddress);
+
+        return requestID;
+    }
+
     function submitProofOfDeployment(bytes32 projectId, bytes32 requestID, string memory proofBase64) public {
         require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
 
         require(requestID.length > 0, "requestID is empty");
-        require(requestDeploymentStatus[requestID].status != Status.Init, "request ID not exit");
+        require(requestDeploymentStatus[requestID].status != Status.Init, "requestID not exit");
         require(requestDeploymentStatus[requestID].deployWorkerAddr == msg.sender, "wrong worker address");
 
         require(requestDeploymentStatus[requestID].status != Status.GeneratedProof, "already submit proof");
@@ -431,7 +470,7 @@ contract Blueprint {
             "requestID already picked by another worker, try a different requestID"
         );
 
-        require(requestDeploymentStatus[requestID].status != Status.GeneratedProof, "requestID already submit proof");
+        require(requestDeploymentStatus[requestID].status != Status.GeneratedProof, "requestID has already submitted proof");
 
         // currently, do first come, first server, will do a better way in the future
         requestDeploymentStatus[requestID].status = Status.Pickup;
