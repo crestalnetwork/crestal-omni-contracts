@@ -176,11 +176,12 @@ contract Blueprint {
 
     function createProjectIDAndProposalRequest(bytes32 projectId, string memory base64RecParam, string memory serverURL)
         public
+        returns (bytes32 requestID)
     {
         // set project id
         setProjectId(projectId);
         // create proposal request
-        createProposalRequest(projectId, base64RecParam, serverURL);
+        requestID = createProposalRequest(projectId, base64RecParam, serverURL);
     }
 
     function proposalRequest(
@@ -428,7 +429,7 @@ contract Blueprint {
         // create deployment request without solver recommendation, so leave solver address as dummyAddress
         // since this is public deployment request leave worker address as dummyAddress
         (bytes32 requestID, bytes32 projectDeploymentId) =
-                        deploymentRequest(projectId, dummyAddress, privateWorkerAddress, base64Proposal, serverURL, 0);
+            deploymentRequest(projectId, dummyAddress, privateWorkerAddress, base64Proposal, serverURL, 0);
 
         projects[projectId].requestDeploymentID = projectDeploymentId;
 
@@ -470,7 +471,9 @@ contract Blueprint {
             "requestID already picked by another worker, try a different requestID"
         );
 
-        require(requestDeploymentStatus[requestID].status != Status.GeneratedProof, "requestID has already submitted proof");
+        require(
+            requestDeploymentStatus[requestID].status != Status.GeneratedProof, "requestID has already submitted proof"
+        );
 
         // currently, do first come, first server, will do a better way in the future
         requestDeploymentStatus[requestID].status = Status.Pickup;
@@ -508,5 +511,9 @@ contract Blueprint {
         bytes32[] memory requestDeploymentIDs = deploymentIdList[projects[projectId].requestDeploymentID];
 
         return (projects[projectId].proposedSolverAddr, projects[projectId].requestProposalID, requestDeploymentIDs);
+    }
+
+    function getDeploymentProof(bytes32 requestID) public view returns (string memory) {
+        return deploymentProof[requestID];
     }
 }
