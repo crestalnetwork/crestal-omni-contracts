@@ -92,6 +92,10 @@ contract Blueprint {
         bytes32 indexed projectID, bytes32 indexed requestID, string base64DeploymentProof
     );
 
+    event UpdateDeploymentConfig(
+        bytes32 indexed projectID, bytes32 indexed requestID, address workerAddress, string base64Config
+    );
+
     // get solver reputation
     function getReputation(address addr) public view returns (uint256) {
         return solverReputation[addr];
@@ -483,6 +487,27 @@ contract Blueprint {
         isAccepted = true;
 
         emit AcceptDeployment(projectId, requestID, requestDeploymentStatus[requestID].deployWorkerAddr);
+    }
+
+    function UpdateWorkerDeploymentConfig(bytes32 projectId, bytes32 requestID, string memory updatedBase64Config)
+        public
+    {
+        require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
+
+        require(requestDeploymentStatus[requestID].status != Status.Init, "requestID not exit");
+
+        require(bytes(updatedBase64Config).length > 0, "updatedBase64Config is empty");
+
+        require(requestDeploymentStatus[requestID].status != Status.Issued, "requestID is not picked up by any worker");
+
+        // reset status if it is generated proof
+        if (requestDeploymentStatus[requestID].status == Status.GeneratedProof) {
+            requestDeploymentStatus[requestID].status = Status.Pickup;
+        }
+
+        emit UpdateDeploymentConfig(
+            projectId, requestID, requestDeploymentStatus[requestID].deployWorkerAddr, updatedBase64Config
+        );
     }
 
     // get latest deployment status
