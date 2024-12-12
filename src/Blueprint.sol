@@ -195,7 +195,9 @@ contract Blueprint {
         string memory serverURL
     ) internal returns (bytes32 requestID) {
         // check project id
-
+        //    projects[projectId].id != 0 --> false --> new project id created by new blueprint not exit
+        //    projectIDs[projectId] != address(0) -- > false -- >. old project id created by old blueprint not exit.
+        //    both 1 and 2 are false, then project id does not exit in old and new blueprint
         require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
 
         require(bytes(serverURL).length > 0, "serverURL is empty");
@@ -355,6 +357,7 @@ contract Blueprint {
         string memory serverURL,
         uint256 index
     ) internal returns (bytes32 requestID, bytes32 projectDeploymentId) {
+        // projectId backwards compatibility
         require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
 
         require(bytes(serverURL).length > 0, "serverURL is empty");
@@ -448,6 +451,7 @@ contract Blueprint {
     }
 
     function submitProofOfDeployment(bytes32 projectId, bytes32 requestID, string memory proofBase64) public {
+        // projectId backwards compatibility
         require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
 
         require(requestID.length > 0, "requestID is empty");
@@ -466,6 +470,7 @@ contract Blueprint {
     }
 
     function submitDeploymentRequest(bytes32 projectId, bytes32 requestID) public returns (bool isAccepted) {
+        // projectId backwards compatibility
         require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
 
         require(requestID.length > 0, "requestID is empty");
@@ -492,6 +497,7 @@ contract Blueprint {
     function UpdateWorkerDeploymentConfig(bytes32 projectId, bytes32 requestID, string memory updatedBase64Config)
         public
     {
+        // projectId backwards compatibility
         require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
 
         require(requestDeploymentStatus[requestID].status != Status.Init, "requestID not exit");
@@ -532,6 +538,7 @@ contract Blueprint {
 
     // get project info
     function getProjectInfo(bytes32 projectId) public view returns (address, bytes32, bytes32[] memory) {
+        // only new upgrade blueprint use this function
         require(projects[projectId].id != 0, "projectId does not exist");
         bytes32[] memory requestDeploymentIDs = deploymentIdList[projects[projectId].requestDeploymentID];
 
