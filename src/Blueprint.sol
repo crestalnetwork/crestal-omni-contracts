@@ -2,8 +2,6 @@
 
 pragma solidity ^0.8.26;
 
-pragma experimental ABIEncoderV2;
-
 contract Blueprint {
     enum Status {
         Init,
