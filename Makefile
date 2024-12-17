@@ -13,7 +13,7 @@ deploy:
 	forge script ./script/Deploy.s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
 
 upgrade:
-	forge script ./script/Upgrade.s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
+	PROXY_ADDRESS=$(PROXY_ADDRESS) forge script ./script/Upgrade.s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
 
 upgrade-test:
 	forge script ./script/UpgradeTest.s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
