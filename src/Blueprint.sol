@@ -33,6 +33,7 @@ contract Blueprint {
     mapping(bytes32 => string) private deploymentProof;
     mapping(bytes32 => address) private requestSolver;
     mapping(bytes32 => address) private requestWorker;
+    // projectIDs is not used anymore after 2.0
     mapping(bytes32 => address) private projectIDs;
 
     // keep old variable in order so that it can be compatible with old contract
@@ -51,6 +52,9 @@ contract Blueprint {
     mapping(bytes32 => Project) private projects;
 
     mapping(bytes32 => bytes32[]) public deploymentIdList;
+
+    // worker public key
+    mapping(address => bytes) private workersPublicKey;
 
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);
     event RequestProposal(
@@ -512,6 +516,16 @@ contract Blueprint {
         emit UpdateDeploymentConfig(
             projectId, requestID, requestDeploymentStatus[requestID].deployWorkerAddr, updatedBase64Config
         );
+    }
+
+    // set worker public key
+    function setWorkerPublicKey(bytes calldata publicKey) public {
+        workersPublicKey[msg.sender] = publicKey;
+    }
+
+    // get worker public key
+    function getWorkerPublicKey(address workerAddress) external view returns (bytes memory publicKey) {
+        publicKey = workersPublicKey[workerAddress];
     }
 
     // get latest deployment status
