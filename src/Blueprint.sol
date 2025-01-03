@@ -53,6 +53,8 @@ contract Blueprint {
 
     mapping(bytes32 => bytes32[]) public deploymentIdList;
 
+    // List of worker addresses
+    address[] private workerAddresses;
     // worker public key
     mapping(address => bytes) private workersPublicKey;
 
@@ -452,6 +454,24 @@ contract Blueprint {
         return requestID;
     }
 
+    function createProjectIdAndPrivateDeploymentWithConfig(
+        bytes32 projectId,
+        string memory base64Proposal,
+        address privateWorkerAddress,
+        string memory serverURL
+    ) public returns (bytes32) {
+        bytes32 requestID =
+            createProjectIDAndPrivateDeploymentRequest(projectId, base64Proposal, privateWorkerAddress, serverURL);
+
+        emit UpdateDeploymentConfig(
+            projectId,
+            requestID,
+            requestDeploymentStatus[requestID].deployWorkerAddr,
+            "please get encrypted config from crestal backend and then decrypted with your private key"
+        );
+        return requestID;
+    }
+
     function submitProofOfDeployment(bytes32 projectId, bytes32 requestID, string memory proofBase64) public {
         // projectId backwards compatibility
         require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
@@ -520,12 +540,21 @@ contract Blueprint {
 
     // set worker public key
     function setWorkerPublicKey(bytes calldata publicKey) public {
+        if (workersPublicKey[msg.sender].length == 0) {
+            workerAddresses.push(msg.sender);
+        }
+
         workersPublicKey[msg.sender] = publicKey;
     }
 
     // get worker public key
     function getWorkerPublicKey(address workerAddress) external view returns (bytes memory publicKey) {
         publicKey = workersPublicKey[workerAddress];
+    }
+
+    // get list of worker addresses
+    function getWorkerAddresses() public view returns (address[] memory) {
+        return workerAddresses;
     }
 
     // get latest deployment status
