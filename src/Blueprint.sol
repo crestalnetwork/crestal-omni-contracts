@@ -56,7 +56,7 @@ contract Blueprint {
     // List of worker addresses
     address[] private workerAddresses;
     // worker public key
-    mapping(address => bytes) private workersPublicKey;
+    mapping(address => bytes) private workerPublicKeys;
 
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);
     event RequestProposal(
@@ -540,16 +540,16 @@ contract Blueprint {
 
     // set worker public key
     function setWorkerPublicKey(bytes calldata publicKey) public {
-        if (workersPublicKey[msg.sender].length == 0) {
+        if (workerPublicKeys[msg.sender].length == 0) {
             workerAddresses.push(msg.sender);
         }
 
-        workersPublicKey[msg.sender] = publicKey;
+        workerPublicKeys[msg.sender] = publicKey;
     }
 
     // get worker public key
     function getWorkerPublicKey(address workerAddress) external view returns (bytes memory publicKey) {
-        publicKey = workersPublicKey[workerAddress];
+        publicKey = workerPublicKeys[workerAddress];
     }
 
     // get list of worker addresses
