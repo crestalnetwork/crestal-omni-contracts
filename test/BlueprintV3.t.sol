@@ -71,7 +71,7 @@ contract BlueprintTest is Test {
                 )
             ),
             privateWorkerAddress,
-            "please get encrypted config from crestal backend and then decrypted with your private key"
+            "Encrypted config for deployment"
         );
 
         // Call the function with the configuration parameters

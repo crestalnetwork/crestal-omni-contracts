@@ -464,10 +464,7 @@ contract Blueprint {
             createProjectIDAndPrivateDeploymentRequest(projectId, base64Proposal, privateWorkerAddress, serverURL);
 
         emit UpdateDeploymentConfig(
-            projectId,
-            requestID,
-            requestDeploymentStatus[requestID].deployWorkerAddr,
-            "Encrypted config for deployment"
+            projectId, requestID, requestDeploymentStatus[requestID].deployWorkerAddr, "Encrypted config for deployment"
         );
         return requestID;
     }
