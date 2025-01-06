@@ -467,7 +467,7 @@ contract Blueprint {
             projectId,
             requestID,
             requestDeploymentStatus[requestID].deployWorkerAddr,
-            "please get encrypted config from crestal backend and then decrypted with your private key"
+            "Encrypted config for deployment"
         );
         return requestID;
     }
