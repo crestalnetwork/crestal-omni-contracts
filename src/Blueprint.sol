@@ -105,10 +105,6 @@ contract Blueprint {
         bytes32 indexed projectID, bytes32 indexed requestID, address workerAddress, string base64Config
     );
 
-    constructor() {
-        // Initialize eip712 instance
-        eip712 = new EIP712(address(this), VERSION);
-    }
 
     // get solver reputation
     function getReputation(address addr) public view returns (uint256) {
@@ -766,5 +762,9 @@ contract Blueprint {
 
     function getDeploymentProof(bytes32 requestID) public view returns (string memory) {
         return deploymentProof[requestID];
+    }
+
+    function getEIP712ContractAddress() public view returns (address) {
+        return eip712.getAddress();
     }
 }
