@@ -74,8 +74,16 @@ contract BlueprintTest is Test {
 
     function test_createDeploymentRequest() public {
         bytes32 projId = blueprint.createProjectID();
+
         bytes32 deploymentRequestId =
             blueprint.createDeploymentRequest(projId, solverAddress, "test base64 param", "test server url");
+
+        bytes32 requestId = keccak256(
+            abi.encodePacked(
+                uint256(block.timestamp), address(this), "test base64 param", uint256(block.chainid), projId, uint256(0)
+            )
+        );
+
         bytes32 latestDeploymentRequestId = blueprint.getLatestDeploymentRequestID(address(this));
         assertEq(deploymentRequestId, latestDeploymentRequestId);
 
