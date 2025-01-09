@@ -6,7 +6,7 @@ import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 contract EIP712 is EIP712Upgradeable {
-    string public constant SIGNING_DOMAIN = "app.crestal.network";
+
     bytes32 public constant PROPOSAL_REQUEST_TYPEHASH =
         keccak256("ProposalRequest(bytes32 projectId,string base64RecParam,string serverURL)");
     bytes32 public constant DEPLOYMENT_REQUEST_TYPEHASH =
@@ -17,11 +17,7 @@ contract EIP712 is EIP712Upgradeable {
         return verifyingContract;
     }
 
-    function initialize(string memory blueprintVersion) public initializer {
-        __EIP712_init(SIGNING_DOMAIN, blueprintVersion);
-    }
-
-    function getRequestProposalDigest(bytes32 projectId, string calldata base64RecParam, string calldata serverURL)
+    function getRequestProposalDigest(bytes32 projectId, string memory base64RecParam, string memory serverURL)
         public
         view
         returns (bytes32)
@@ -35,7 +31,7 @@ contract EIP712 is EIP712Upgradeable {
         return _hashTypedDataV4(structHash);
     }
 
-    function getRequestDeploymentDigest(bytes32 projectId, string calldata base64RecParam, string calldata serverURL)
+    function getRequestDeploymentDigest(bytes32 projectId, string memory base64RecParam, string memory serverURL)
         public
         view
         returns (bytes32)

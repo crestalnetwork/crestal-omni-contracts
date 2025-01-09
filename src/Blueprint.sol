@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 
 import {EIP712} from "./EIP712.sol";
 
-contract Blueprint {
+contract Blueprint is EIP712 {
     enum Status {
         Init,
         Issued,
@@ -59,9 +59,6 @@ contract Blueprint {
     address[] private workerAddresses;
     // worker public key
     mapping(address => bytes) private workersPublicKey;
-
-    // EIP712 instance
-    EIP712 public eip712;
 
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);
     event RequestProposal(
@@ -194,10 +191,10 @@ contract Blueprint {
         bytes memory signature
     ) public returns (bytes32 requestID) {
         // get EIP712 hash digest
-        bytes32 digest = eip712.getRequestProposalDigest(projectId, base64RecParam, serverURL);
+        bytes32 digest = getRequestProposalDigest(projectId, base64RecParam, serverURL);
 
         // get signer address
-        address signerAddr = eip712.getSignerAddress(digest, signature);
+        address signerAddr = getSignerAddress(digest, signature);
 
         requestID = createCommonProposalRequest(signerAddr, projectId, base64RecParam, serverURL);
     }
@@ -230,10 +227,10 @@ contract Blueprint {
         bytes memory signature
     ) public returns (bytes32 requestID) {
         // get EIP712 hash digest
-        bytes32 digest = eip712.getRequestProposalDigest(projectId, base64RecParam, serverURL);
+        bytes32 digest = getRequestProposalDigest(projectId, base64RecParam, serverURL);
 
         // get signer address
-        address signerAddr = eip712.getSignerAddress(digest, signature);
+        address signerAddr = getSignerAddress(digest, signature);
 
         // set project id
         setProjectId(projectId, signerAddr);
@@ -304,10 +301,10 @@ contract Blueprint {
         bytes memory signature
     ) public returns (bytes32) {
         // get EIP712 hash digest
-        bytes32 digest = eip712.getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
+        bytes32 digest = getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
 
         // get signer address
-        address signerAddr = eip712.getSignerAddress(digest, signature);
+        address signerAddr = getSignerAddress(digest, signature);
 
         bytes32 requestID =
             createCommonDeploymentRequest(signerAddr, projectId, solverAddress, base64Proposal, serverURL);
@@ -392,10 +389,10 @@ contract Blueprint {
         bytes memory signature
     ) public returns (bytes32) {
         // get EIP712 hash digest
-        bytes32 digest = eip712.getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
+        bytes32 digest = getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
 
         // get signer address
-        address signerAddr = eip712.getSignerAddress(digest, signature);
+        address signerAddr = getSignerAddress(digest, signature);
 
         bytes32 requestID = createCommonPrivateDeploymentRequest(
             signerAddr, projectId, solverAddress, privateWorkerAddress, base64Proposal, serverURL
@@ -541,10 +538,10 @@ contract Blueprint {
         bytes memory signature
     ) public returns (bytes32) {
         // get EIP712 hash digest
-        bytes32 digest = eip712.getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
+        bytes32 digest = getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
 
         // get signer address
-        address signerAddr = eip712.getSignerAddress(digest, signature);
+        address signerAddr = getSignerAddress(digest, signature);
 
         bytes32 requestID = createCommonProjectIDAndDeploymentRequest(signerAddr, projectId, base64Proposal, serverURL);
         return requestID;
@@ -620,10 +617,10 @@ contract Blueprint {
         bytes memory signature
     ) public returns (bytes32) {
         // get EIP712 hash digest
-        bytes32 digest = eip712.getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
+        bytes32 digest = getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
 
         // get signer address
-        address signerAddr = eip712.getSignerAddress(digest, signature);
+        address signerAddr = getSignerAddress(digest, signature);
 
         bytes32 requestID = createCommonProjectIDAndPrivateDeploymentRequest(
             signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL
@@ -765,6 +762,6 @@ contract Blueprint {
     }
 
     function getEIP712ContractAddress() public view returns (address) {
-        return eip712.getAddress();
+        return getAddress();
     }
 }
