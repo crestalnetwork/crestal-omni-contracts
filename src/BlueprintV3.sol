@@ -9,6 +9,7 @@ import "./Blueprint.sol";
 
 contract BlueprintV3 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Blueprint {
     string public constant SIGNING_DOMAIN = "app.crestal.network";
+
     function initialize() public reinitializer(3) {
         __Ownable_init(msg.sender);
         __UUPSUpgradeable_init();

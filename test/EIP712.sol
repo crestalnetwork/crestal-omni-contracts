@@ -1,4 +1,3 @@
-
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
@@ -31,19 +30,19 @@ contract EIP712Test is Test, EIP712Upgradeable {
                 address(eip712)
             )
         );
-
     }
 
-
-
     function testGetRequestProposalHashDigest(bytes32 projId, string memory base64RecParam, string memory serverURL)
-    public
-    view
-    returns (bytes32)
+        public
+        view
+        returns (bytes32)
     {
         bytes32 structHash = keccak256(
             abi.encode(
-                eip712.PROPOSAL_REQUEST_TYPEHASH(), projId, keccak256(bytes(base64RecParam)), keccak256(bytes(serverURL))
+                eip712.PROPOSAL_REQUEST_TYPEHASH(),
+                projId,
+                keccak256(bytes(base64RecParam)),
+                keccak256(bytes(serverURL))
             )
         );
 
@@ -54,7 +53,6 @@ contract EIP712Test is Test, EIP712Upgradeable {
     }
 
     function test_getRequestProposalDigest() public view {
-
         // check address
         assertEq(eip712.getAddress(), address(eip712));
 
@@ -66,11 +64,9 @@ contract EIP712Test is Test, EIP712Upgradeable {
         // generate hash using test function
         bytes32 digest2 = testGetRequestProposalHashDigest(projectId, base64RecParam, serverURL);
         assertEq(digest1, digest2);
-
     }
 
-    function test_getSignerAddress() public  {
-
+    function test_getSignerAddress() public {
         // Generate the hash of the request proposal
         bytes32 digest = eip712.getRequestProposalDigest(projectId, "", "");
 
@@ -86,10 +82,8 @@ contract EIP712Test is Test, EIP712Upgradeable {
         assertEq(recoveredSigner, vm.addr(signerPrivateKey));
     }
 
-
     function test_invalidSignature() public {
-
-        bytes32 digest= eip712.getRequestProposalDigest(projectId, "", "");
+        bytes32 digest = eip712.getRequestProposalDigest(projectId, "", "");
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
@@ -102,5 +96,4 @@ contract EIP712Test is Test, EIP712Upgradeable {
         address recoveredSigner = eip712.getSignerAddress(digest, signature);
         assertEq(recoveredSigner, address(0));
     }
-
 }

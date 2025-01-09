@@ -6,7 +6,6 @@ import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 contract EIP712 is EIP712Upgradeable {
-
     bytes32 public constant PROPOSAL_REQUEST_TYPEHASH =
         keccak256("ProposalRequest(bytes32 projectId,string base64RecParam,string serverURL)");
     bytes32 public constant DEPLOYMENT_REQUEST_TYPEHASH =
@@ -50,5 +49,4 @@ contract EIP712 is EIP712Upgradeable {
         require(signerAddr != address(0), "Invalid signature");
         return signerAddr;
     }
-
 }

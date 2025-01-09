@@ -21,7 +21,6 @@ contract BlueprintTest is Test {
         solverAddress = address(0x275960ad41DbE218bBf72cDF612F88b5C6f40648);
         workerAddress = address(0x4d6585D89F889F29f77fd7Dd71864269BA1B31df);
         dummyAddress = address(0);
-
     }
 
     function test_VERSION() public view {
@@ -95,7 +94,6 @@ contract BlueprintTest is Test {
         assertEq(workerAddr, privateWorkerAddress);
     }
 
-
     function test_createProjectIDAndProposalRequestWithSig() public {
         // Define the configuration parameters
         string memory base64RecParam = "data";
@@ -112,7 +110,13 @@ contract BlueprintTest is Test {
 
         // Expect the RequestProposal event to be emitted
         vm.expectEmit(true, true, true, true);
-        emit Blueprint.RequestProposal(projectId, owner, keccak256(abi.encodePacked(block.timestamp, owner, base64RecParam, block.chainid)), base64RecParam, serverURL);
+        emit Blueprint.RequestProposal(
+            projectId,
+            owner,
+            keccak256(abi.encodePacked(block.timestamp, owner, base64RecParam, block.chainid)),
+            base64RecParam,
+            serverURL
+        );
 
         // Call the function with the configuration parameters
         bytes32 requestID =
@@ -129,7 +133,6 @@ contract BlueprintTest is Test {
         bytes32 storedProjectID = blueprint.getLatestUserProjectID(owner);
         assertEq(storedProjectID, projectId);
     }
-
 
     function test_createPrivateDeploymentRequestWithSig() public {
         string memory base64Proposal = "data:image/png;base64,sdfasdfsdf";
@@ -163,9 +166,8 @@ contract BlueprintTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
 
-        bytes32 requestID = blueprint.createDeploymentRequestWithSig(
-            projId, solverAddress, base64Proposal, serverURL, signature
-        );
+        bytes32 requestID =
+            blueprint.createDeploymentRequestWithSig(projId, solverAddress, base64Proposal, serverURL, signature);
 
         assert(requestID != bytes32(0));
 
@@ -185,9 +187,7 @@ contract BlueprintTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, digest);
         bytes memory signature = abi.encodePacked(r, s, v);
 
-        bytes32 requestID = blueprint.createProposalRequestWithSig(
-            projId, base64RecParam, serverURL, signature
-        );
+        bytes32 requestID = blueprint.createProposalRequestWithSig(projId, base64RecParam, serverURL, signature);
 
         assert(requestID != bytes32(0));
 
@@ -209,7 +209,8 @@ contract BlueprintTest is Test {
         address signerAddress = vm.addr(signerPrivateKey);
 
         // Create the project ID and deployment request with signature
-        bytes32 requestID = blueprint.createProjectIDAndDeploymentRequestWithSig(projectId, base64Proposal, serverURL, signature);
+        bytes32 requestID =
+            blueprint.createProjectIDAndDeploymentRequestWithSig(projectId, base64Proposal, serverURL, signature);
 
         // Verify that the request ID is not empty
         assert(requestID != bytes32(0));
@@ -226,7 +227,6 @@ contract BlueprintTest is Test {
         // verify project id is stored correctly
         bytes32 storedProjectID = blueprint.getLatestUserProjectID(signerAddress);
         assertEq(storedProjectID, projectId);
-
     }
 
     function test_createProjectIDAndPrivateDeploymentRequestWithSig() public {
@@ -264,6 +264,4 @@ contract BlueprintTest is Test {
         bytes32 storedProjectID = blueprint.getLatestUserProjectID(signerAddress);
         assertEq(storedProjectID, projectId);
     }
-
-
 }

@@ -77,7 +77,7 @@ contract BlueprintTestUpgrade is Test {
         assertEq(pid, projId);
 
         bytes32 deploymentRequestId =
-                            proxy.createDeploymentRequest(projId, solverAddress, "test base64 param", "test server url");
+            proxy.createDeploymentRequest(projId, solverAddress, "test base64 param", "test server url");
         bytes32 latestDeploymentRequestId = proxy.getLatestDeploymentRequestID(address(this));
         assertEq(deploymentRequestId, latestDeploymentRequestId);
 
@@ -98,6 +98,5 @@ contract BlueprintTestUpgrade is Test {
         // get old deployment request id
         latestDeploymentRequestId = proxy.getLatestDeploymentRequestID(address(this));
         assertEq(deploymentRequestId, latestDeploymentRequestId);
-
     }
 }

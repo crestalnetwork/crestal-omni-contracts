@@ -102,7 +102,6 @@ contract Blueprint is EIP712 {
         bytes32 indexed projectID, bytes32 indexed requestID, address workerAddress, string base64Config
     );
 
-
     // get solver reputation
     function getReputation(address addr) public view returns (uint256) {
         return solverReputation[addr];
