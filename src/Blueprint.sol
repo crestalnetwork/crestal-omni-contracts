@@ -763,8 +763,4 @@ contract Blueprint is EIP712 {
     function getEIP712ContractAddress() public view returns (address) {
         return getAddress();
     }
-
-    function getVersion() public view returns (string memory) {
-        return VERSION;
-    }
 }
