@@ -12,9 +12,9 @@ contract BlueprintV3 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Blue
 
     function initialize() public reinitializer(3) {
         __Ownable_init(msg.sender);
-        __UUPSUpgradeable_init();
         VERSION = "3.0.0";
         __EIP712_init(SIGNING_DOMAIN, VERSION);
+        __UUPSUpgradeable_init();
     }
 
     // The _authorizeUpgrade function is required by the UUPSUpgradeable contract
