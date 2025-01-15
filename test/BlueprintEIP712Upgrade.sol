@@ -15,6 +15,7 @@ contract EIP712Test is Test {
     BlueprintV1 public proxy;
     BlueprintV3 public proxyV3;
     bytes32 public projectId;
+    address public solverAddress;
 
     function setUp() public {
         BlueprintV1 blueprint = new BlueprintV1();
@@ -39,6 +40,9 @@ contract EIP712Test is Test {
         proxyV3 = BlueprintV3(address(proxy));
 
         projectId = bytes32(0x2723a34e38d0f0aa09ce626f00aa23c0464b52c75516cf3203cc4c9afeaf2980);
+
+        // init solver address
+        solverAddress = address(0x275960ad41DbE218bBf72cDF612F88b5C6f40648);
     }
 
     function test_getRequestProposalDigest() public {
@@ -56,5 +60,35 @@ contract EIP712Test is Test {
         // Generate the hash of the request proposal from new eip712
         bytes32 digest2 = proxyV3.getRequestProposalDigest(projectId, base64RecParam, serverURL);
         assertEq(digest1, digest2);
+    }
+
+    function test_UpgradeEIP712() public {
+        bytes32 pid = proxyV3.createProjectID();
+        bytes32 projId = proxyV3.getLatestUserProjectID(address(this));
+        assertEq(pid, projId);
+
+        bytes32 deploymentRequestId =
+            proxyV3.createDeploymentRequest(projId, solverAddress, "test base64 param", "test server url");
+        bytes32 latestDeploymentRequestId = proxyV3.getLatestDeploymentRequestID(address(this));
+        assertEq(deploymentRequestId, latestDeploymentRequestId);
+
+        BlueprintEIP712Upgrade blueprintEIP712Upgrade = new BlueprintEIP712Upgrade();
+        proxy.upgradeToAndCall(address(blueprintEIP712Upgrade), abi.encodeWithSignature("initialize()"));
+        string memory ver = proxy.VERSION();
+        assertEq(ver, "3.0.0");
+        proxyV3 = BlueprintV3(address(proxy));
+
+        // create proposal request with old project id from v3
+        bytes32 proposalId = proxyV3.createProposalRequest(projId, "test base64 param", "test server url");
+        bytes32 latestProposalId = proxyV3.getLatestProposalRequestID(address(this));
+        assertEq(proposalId, latestProposalId);
+
+        // get old project id
+        projId = proxyV3.getLatestUserProjectID(address(this));
+        assertEq(pid, projId);
+
+        // get old deployment request id
+        latestDeploymentRequestId = proxyV3.getLatestDeploymentRequestID(address(this));
+        assertEq(deploymentRequestId, latestDeploymentRequestId);
     }
 }
