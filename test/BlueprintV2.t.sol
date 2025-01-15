@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 import {Test, console} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {BlueprintV2} from "../src/BlueprintV2.sol";
-import {Blueprint} from "../src/BlueprintOldV2.sol";
+import {Blueprint} from "../blueprint-history/BlueprintV2.sol";
 import {stdError} from "forge-std/StdError.sol";
 
 contract BlueprintTest is Test {
