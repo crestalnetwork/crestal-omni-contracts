@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.26;
 
-import {EIP712} from "../blueprint-history/EIP712Upgrade.sol";
+import {EIP712} from "../blueprint-history/EIP712UpgradeV1.sol";
 
 contract Blueprint is EIP712 {
     enum Status {
