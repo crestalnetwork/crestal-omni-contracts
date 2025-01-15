@@ -2,9 +2,7 @@
 
 pragma solidity ^0.8.26;
 
-import {EIP712} from "./EIP712.sol";
-
-contract Blueprint is EIP712 {
+contract Blueprint {
     enum Status {
         Init,
         Issued,
@@ -35,7 +33,6 @@ contract Blueprint is EIP712 {
     mapping(bytes32 => string) private deploymentProof;
     mapping(bytes32 => address) private requestSolver;
     mapping(bytes32 => address) private requestWorker;
-    // projectIDs is not used anymore after 2.0
     mapping(bytes32 => address) private projectIDs;
 
     // keep old variable in order so that it can be compatible with old contract
@@ -54,11 +51,6 @@ contract Blueprint is EIP712 {
     mapping(bytes32 => Project) private projects;
 
     mapping(bytes32 => bytes32[]) public deploymentIdList;
-
-    // List of worker addresses
-    address[] private workerAddresses;
-    // worker public key
-    mapping(address => bytes) private workersPublicKey;
 
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);
     event RequestProposal(
@@ -126,10 +118,9 @@ contract Blueprint is EIP712 {
         solverReputation[addr] = reputation;
     }
 
-    function setProjectId(bytes32 projectId, address userAddr) internal {
+    function setProjectId(bytes32 projectId) internal {
         // check project id
         require(projects[projectId].id == 0, "projectId already exists");
-        require(userAddr != address(0), "Invalid userAddr");
 
         Project memory project;
         project.id = projectId;
@@ -137,16 +128,16 @@ contract Blueprint is EIP712 {
         projects[projectId] = project;
 
         // set latest project
-        latestProjectID[userAddr] = projectId;
+        latestProjectID[msg.sender] = projectId;
 
-        emit CreateProjectID(projectId, userAddr);
+        emit CreateProjectID(projectId, msg.sender);
     }
 
     function createProjectID() public returns (bytes32 projectId) {
         // generate unique project id
         projectId = keccak256(abi.encodePacked(block.timestamp, msg.sender, block.chainid));
 
-        setProjectId(projectId, msg.sender);
+        setProjectId(projectId);
     }
 
     function upgradeProject(bytes32 projectId) public {
@@ -169,33 +160,9 @@ contract Blueprint is EIP712 {
         public
         returns (bytes32 requestID)
     {
-        requestID = createCommonProposalRequest(msg.sender, projectId, base64RecParam, serverURL);
-    }
+        requestID = proposalRequest(projectId, dummyAddress, base64RecParam, serverURL);
 
-    function createCommonProposalRequest(
-        address userAddress,
-        bytes32 projectId,
-        string memory base64RecParam,
-        string memory serverURL
-    ) internal returns (bytes32 requestID) {
-        requestID = proposalRequest(userAddress, projectId, dummyAddress, base64RecParam, serverURL);
-
-        emit RequestProposal(projectId, userAddress, requestID, base64RecParam, serverURL);
-    }
-
-    function createProposalRequestWithSig(
-        bytes32 projectId,
-        string memory base64RecParam,
-        string memory serverURL,
-        bytes memory signature
-    ) public returns (bytes32 requestID) {
-        // get EIP712 hash digest
-        bytes32 digest = getRequestProposalDigest(projectId, base64RecParam, serverURL);
-
-        // get signer address
-        address signerAddr = getSignerAddress(digest, signature);
-
-        requestID = createCommonProposalRequest(signerAddr, projectId, base64RecParam, serverURL);
+        emit RequestProposal(projectId, msg.sender, requestID, base64RecParam, serverURL);
     }
 
     function createPrivateProposalRequest(
@@ -204,7 +171,7 @@ contract Blueprint is EIP712 {
         string memory base64RecParam,
         string memory serverURL
     ) public returns (bytes32 requestID) {
-        requestID = proposalRequest(msg.sender, projectId, privateSolverAddress, base64RecParam, serverURL);
+        requestID = proposalRequest(projectId, privateSolverAddress, base64RecParam, serverURL);
 
         emit RequestPrivateProposal(projectId, msg.sender, privateSolverAddress, requestID, base64RecParam, serverURL);
     }
@@ -214,31 +181,12 @@ contract Blueprint is EIP712 {
         returns (bytes32 requestID)
     {
         // set project id
-        setProjectId(projectId, msg.sender);
+        setProjectId(projectId);
         // create proposal request
-        requestID = createCommonProposalRequest(msg.sender, projectId, base64RecParam, serverURL);
-    }
-
-    function createProjectIDAndProposalRequestWithSig(
-        bytes32 projectId,
-        string memory base64RecParam,
-        string memory serverURL,
-        bytes memory signature
-    ) public returns (bytes32 requestID) {
-        // get EIP712 hash digest
-        bytes32 digest = getRequestProposalDigest(projectId, base64RecParam, serverURL);
-
-        // get signer address
-        address signerAddr = getSignerAddress(digest, signature);
-
-        // set project id
-        setProjectId(projectId, signerAddr);
-        // create proposal request
-        requestID = createCommonProposalRequest(signerAddr, projectId, base64RecParam, serverURL);
+        requestID = createProposalRequest(projectId, base64RecParam, serverURL);
     }
 
     function proposalRequest(
-        address userAddress,
         bytes32 projectId,
         address solverAddress,
         string memory base64RecParam,
@@ -254,7 +202,7 @@ contract Blueprint is EIP712 {
         require(bytes(base64RecParam).length > 0, "base64RecParam is empty");
 
         // generate unique hash
-        requestID = keccak256(abi.encodePacked(block.timestamp, userAddress, base64RecParam, block.chainid));
+        requestID = keccak256(abi.encodePacked(block.timestamp, msg.sender, base64RecParam, block.chainid));
 
         // check request id is created or not
         // if it is created, then we need to lock it, not allow user to trigger proposal request again
@@ -262,7 +210,7 @@ contract Blueprint is EIP712 {
 
         // FIXME: This prevents a msg.sender to create multiple requests at the same time?
         // For different projects, a solver is allowed to create one (latest proposal) for each.
-        latestProposalRequestID[userAddress] = requestID;
+        latestProposalRequestID[msg.sender] = requestID;
 
         projects[projectId].requestProposalID = requestID;
 
@@ -287,40 +235,10 @@ contract Blueprint is EIP712 {
         string memory base64Proposal,
         string memory serverURL
     ) public returns (bytes32) {
-        bytes32 requestID =
-            createCommonDeploymentRequest(msg.sender, projectId, solverAddress, base64Proposal, serverURL);
-        return requestID;
-    }
-
-    function createDeploymentRequestWithSig(
-        bytes32 projectId,
-        address solverAddress,
-        string memory base64Proposal,
-        string memory serverURL,
-        bytes memory signature
-    ) public returns (bytes32) {
-        // get EIP712 hash digest
-        bytes32 digest = getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
-
-        // get signer address
-        address signerAddr = getSignerAddress(digest, signature);
-
-        bytes32 requestID =
-            createCommonDeploymentRequest(signerAddr, projectId, solverAddress, base64Proposal, serverURL);
-        return requestID;
-    }
-
-    function createCommonDeploymentRequest(
-        address userAddress,
-        bytes32 projectId,
-        address solverAddress,
-        string memory base64Proposal,
-        string memory serverURL
-    ) public returns (bytes32) {
         require(solverAddress != address(0), "solverAddress is not valid");
 
         (bytes32 requestID, bytes32 projectDeploymentId) =
-            deploymentRequest(userAddress, projectId, solverAddress, dummyAddress, base64Proposal, serverURL, 0);
+            deploymentRequest(projectId, solverAddress, dummyAddress, base64Proposal, serverURL, 0);
 
         // once we got request deploymentID, then we set project requestDeploymentID, which points to a list of deploymentID
         projects[projectId].requestDeploymentID = projectDeploymentId;
@@ -328,7 +246,7 @@ contract Blueprint is EIP712 {
         // push request deploymentID into map, link to a project
         deploymentIdList[projectDeploymentId].push(requestID);
 
-        emit RequestDeployment(projectId, userAddress, solverAddress, requestID, base64Proposal, serverURL);
+        emit RequestDeployment(projectId, msg.sender, solverAddress, requestID, base64Proposal, serverURL);
 
         return requestID;
     }
@@ -346,7 +264,7 @@ contract Blueprint is EIP712 {
 
         for (uint256 i = 0; i < base64Proposals.length; ++i) {
             (bytes32 requestID, bytes32 projectDeploymentId) =
-                deploymentRequest(msg.sender, projectId, solverAddress, dummyAddress, base64Proposals[i], serverURL, i);
+                deploymentRequest(projectId, solverAddress, dummyAddress, base64Proposals[i], serverURL, i);
 
             if (projectDeploymentID != 0) {
                 deploymentIdList[projectDeploymentID].push(requestID);
@@ -372,46 +290,10 @@ contract Blueprint is EIP712 {
         string memory base64Proposal,
         string memory serverURL
     ) public returns (bytes32) {
-        bytes32 requestID = createCommonPrivateDeploymentRequest(
-            msg.sender, projectId, solverAddress, privateWorkerAddress, base64Proposal, serverURL
-        );
-
-        return requestID;
-    }
-
-    function createPrivateDeploymentRequestWithSig(
-        bytes32 projectId,
-        address solverAddress,
-        address privateWorkerAddress,
-        string memory base64Proposal,
-        string memory serverURL,
-        bytes memory signature
-    ) public returns (bytes32) {
-        // get EIP712 hash digest
-        bytes32 digest = getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
-
-        // get signer address
-        address signerAddr = getSignerAddress(digest, signature);
-
-        bytes32 requestID = createCommonPrivateDeploymentRequest(
-            signerAddr, projectId, solverAddress, privateWorkerAddress, base64Proposal, serverURL
-        );
-
-        return requestID;
-    }
-
-    function createCommonPrivateDeploymentRequest(
-        address userAddress,
-        bytes32 projectId,
-        address solverAddress,
-        address privateWorkerAddress,
-        string memory base64Proposal,
-        string memory serverURL
-    ) internal returns (bytes32) {
         require(solverAddress != address(0), "solverAddress is not valid");
 
         (bytes32 requestID, bytes32 projectDeploymentId) =
-            deploymentRequest(userAddress, projectId, solverAddress, privateWorkerAddress, base64Proposal, serverURL, 0);
+            deploymentRequest(projectId, solverAddress, privateWorkerAddress, base64Proposal, serverURL, 0);
 
         // once we got request deploymentID, then we set project requestDeploymentID, which points to a list of deploymentID
         projects[projectId].requestDeploymentID = projectDeploymentId;
@@ -420,7 +302,7 @@ contract Blueprint is EIP712 {
         deploymentIdList[projectDeploymentId].push(requestID);
 
         emit RequestPrivateDeployment(
-            projectId, userAddress, privateWorkerAddress, solverAddress, requestID, base64Proposal, serverURL
+            projectId, msg.sender, privateWorkerAddress, solverAddress, requestID, base64Proposal, serverURL
         );
 
         // emit accept deployment event since this deployment request is accepted by blueprint
@@ -442,9 +324,8 @@ contract Blueprint is EIP712 {
         bytes32 projectDeploymentID;
 
         for (uint256 i = 0; i < base64Proposals.length; ++i) {
-            (bytes32 requestID, bytes32 projectDeploymentId) = deploymentRequest(
-                msg.sender, projectId, solverAddress, privateWorkerAddress, base64Proposals[i], serverURL, i
-            );
+            (bytes32 requestID, bytes32 projectDeploymentId) =
+                deploymentRequest(projectId, solverAddress, privateWorkerAddress, base64Proposals[i], serverURL, i);
 
             if (projectDeploymentID != 0) {
                 deploymentIdList[projectDeploymentID].push(requestID);
@@ -467,7 +348,6 @@ contract Blueprint is EIP712 {
     }
 
     function deploymentRequest(
-        address userAddress,
         bytes32 projectId,
         address solverAddress,
         address workerAddress,
@@ -483,17 +363,16 @@ contract Blueprint is EIP712 {
 
         // generate project used deployment id that linked to many deploymentsID associated with different service id
         projectDeploymentId =
-            keccak256(abi.encodePacked(block.timestamp, userAddress, base64Proposal, block.chainid, projectId));
+            keccak256(abi.encodePacked(block.timestamp, msg.sender, base64Proposal, block.chainid, projectId));
 
         // check projectDeploymentId id is created or not
         // if it is created, which means project is start deployment process, should lock
         require(projects[projectId].requestDeploymentID == 0, "deployment requestID already exists");
 
         // generate unique deployment requestID message hash
-        requestID =
-            keccak256(abi.encodePacked(block.timestamp, userAddress, base64Proposal, block.chainid, projectId, index));
+        requestID = keccak256(abi.encodePacked(block.timestamp, msg.sender, base64Proposal, block.chainid, index));
 
-        latestDeploymentRequestID[userAddress] = requestID;
+        latestDeploymentRequestID[msg.sender] = requestID;
 
         totalDeploymentRequest++;
 
@@ -526,72 +405,19 @@ contract Blueprint is EIP712 {
         string memory base64Proposal,
         string memory serverURL
     ) public returns (bytes32) {
-        bytes32 requestID = createCommonProjectIDAndDeploymentRequest(msg.sender, projectId, base64Proposal, serverURL);
-        return requestID;
-    }
-
-    function createProjectIDAndDeploymentRequestWithSig(
-        bytes32 projectId,
-        string memory base64Proposal,
-        string memory serverURL,
-        bytes memory signature
-    ) public returns (bytes32) {
-        // get EIP712 hash digest
-        bytes32 digest = getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
-
-        // get signer address
-        address signerAddr = getSignerAddress(digest, signature);
-
-        bytes32 requestID = createCommonProjectIDAndDeploymentRequest(signerAddr, projectId, base64Proposal, serverURL);
-        return requestID;
-    }
-
-    function createCommonProjectIDAndDeploymentRequest(
-        address userAddress,
-        bytes32 projectId,
-        string memory base64Proposal,
-        string memory serverURL
-    ) internal returns (bytes32) {
         // set project id
-        setProjectId(projectId, userAddress);
+        setProjectId(projectId);
 
         // create deployment request without solver recommendation, so leave solver address as dummyAddress
         // since this is public deployment request leave worker address as dummyAddress
         (bytes32 requestID, bytes32 projectDeploymentId) =
-            deploymentRequest(userAddress, projectId, dummyAddress, dummyAddress, base64Proposal, serverURL, 0);
+            deploymentRequest(projectId, dummyAddress, dummyAddress, base64Proposal, serverURL, 0);
 
         projects[projectId].requestDeploymentID = projectDeploymentId;
 
         deploymentIdList[projectDeploymentId].push(requestID);
 
-        emit RequestDeployment(projectId, userAddress, dummyAddress, requestID, base64Proposal, serverURL);
-
-        return requestID;
-    }
-
-    function createCommonProjectIDAndPrivateDeploymentRequest(
-        address userAddress,
-        bytes32 projectId,
-        string memory base64Proposal,
-        address privateWorkerAddress,
-        string memory serverURL
-    ) internal returns (bytes32) {
-        // set project id
-        setProjectId(projectId, userAddress);
-
-        // create deployment request without solver recommendation, so leave solver address as dummyAddress
-        // since this is public deployment request leave worker address as dummyAddress
-        (bytes32 requestID, bytes32 projectDeploymentId) =
-            deploymentRequest(userAddress, projectId, dummyAddress, privateWorkerAddress, base64Proposal, serverURL, 0);
-
-        projects[projectId].requestDeploymentID = projectDeploymentId;
-
-        deploymentIdList[projectDeploymentId].push(requestID);
-
-        emit RequestDeployment(projectId, userAddress, dummyAddress, requestID, base64Proposal, serverURL);
-
-        // emit accept deployment event since this deployment request is accepted by blueprint
-        emit AcceptDeployment(projectId, requestID, privateWorkerAddress);
+        emit RequestDeployment(projectId, msg.sender, dummyAddress, requestID, base64Proposal, serverURL);
 
         return requestID;
     }
@@ -602,43 +428,23 @@ contract Blueprint is EIP712 {
         address privateWorkerAddress,
         string memory serverURL
     ) public returns (bytes32) {
-        bytes32 requestID = createCommonProjectIDAndPrivateDeploymentRequest(
-            msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL
-        );
-        return requestID;
-    }
+        // set project id
+        setProjectId(projectId);
 
-    function createProjectIDAndPrivateDeploymentRequestWithSig(
-        bytes32 projectId,
-        string memory base64Proposal,
-        address privateWorkerAddress,
-        string memory serverURL,
-        bytes memory signature
-    ) public returns (bytes32) {
-        // get EIP712 hash digest
-        bytes32 digest = getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
+        // create deployment request without solver recommendation, so leave solver address as dummyAddress
+        // since this is public deployment request leave worker address as dummyAddress
+        (bytes32 requestID, bytes32 projectDeploymentId) =
+            deploymentRequest(projectId, dummyAddress, privateWorkerAddress, base64Proposal, serverURL, 0);
 
-        // get signer address
-        address signerAddr = getSignerAddress(digest, signature);
+        projects[projectId].requestDeploymentID = projectDeploymentId;
 
-        bytes32 requestID = createCommonProjectIDAndPrivateDeploymentRequest(
-            signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL
-        );
-        return requestID;
-    }
+        deploymentIdList[projectDeploymentId].push(requestID);
 
-    function createProjectIdAndPrivateDeploymentWithConfig(
-        bytes32 projectId,
-        string memory base64Proposal,
-        address privateWorkerAddress,
-        string memory serverURL
-    ) public returns (bytes32) {
-        bytes32 requestID =
-            createProjectIDAndPrivateDeploymentRequest(projectId, base64Proposal, privateWorkerAddress, serverURL);
+        emit RequestDeployment(projectId, msg.sender, dummyAddress, requestID, base64Proposal, serverURL);
 
-        emit UpdateDeploymentConfig(
-            projectId, requestID, requestDeploymentStatus[requestID].deployWorkerAddr, "Encrypted config for deployment"
-        );
+        // emit accept deployment event since this deployment request is accepted by blueprint
+        emit AcceptDeployment(projectId, requestID, privateWorkerAddress);
+
         return requestID;
     }
 
@@ -708,25 +514,6 @@ contract Blueprint is EIP712 {
         );
     }
 
-    // set worker public key
-    function setWorkerPublicKey(bytes calldata publicKey) public {
-        if (workersPublicKey[msg.sender].length == 0) {
-            workerAddresses.push(msg.sender);
-        }
-
-        workersPublicKey[msg.sender] = publicKey;
-    }
-
-    // get worker public key
-    function getWorkerPublicKey(address workerAddress) external view returns (bytes memory publicKey) {
-        publicKey = workersPublicKey[workerAddress];
-    }
-
-    // get list of worker addresses
-    function getWorkerAddresses() public view returns (address[] memory) {
-        return workerAddresses;
-    }
-
     // get latest deployment status
     function getDeploymentStatus(bytes32 requestID) public view returns (Status, address) {
         return (requestDeploymentStatus[requestID].status, requestDeploymentStatus[requestID].deployWorkerAddr);
@@ -758,9 +545,5 @@ contract Blueprint is EIP712 {
 
     function getDeploymentProof(bytes32 requestID) public view returns (string memory) {
         return deploymentProof[requestID];
-    }
-
-    function getEIP712ContractAddress() public view returns (address) {
-        return getAddress();
     }
 }

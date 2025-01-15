@@ -4,7 +4,7 @@ pragma solidity ^0.8.26;
 import {Test, console} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {BlueprintV2} from "../src/BlueprintV2.sol";
-import {Blueprint} from "../src/Blueprint.sol";
+import {Blueprint} from "../blueprint-history/BlueprintV2.sol";
 import {stdError} from "forge-std/StdError.sol";
 
 contract BlueprintTest is Test {
@@ -74,10 +74,20 @@ contract BlueprintTest is Test {
 
     function test_createDeploymentRequest() public {
         bytes32 projId = blueprint.createProjectID();
+
         bytes32 deploymentRequestId =
             blueprint.createDeploymentRequest(projId, solverAddress, "test base64 param", "test server url");
+
+        bytes32 requestId = keccak256(
+            abi.encodePacked(
+                uint256(block.timestamp), address(this), "test base64 param", uint256(block.chainid), uint256(0)
+            )
+        );
+
         bytes32 latestDeploymentRequestId = blueprint.getLatestDeploymentRequestID(address(this));
         assertEq(deploymentRequestId, latestDeploymentRequestId);
+
+        assertEq(requestId, latestDeploymentRequestId);
 
         (address deployedSolverAddr,, bytes32[] memory deploymentIdList) = blueprint.getProjectInfo(projId);
 

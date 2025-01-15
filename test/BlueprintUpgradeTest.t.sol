@@ -7,6 +7,7 @@ import {BlueprintV1} from "../src/BlueprintV1.sol";
 import {BlueprintUpgradeTest} from "../src/BlueprintUpgradeTest.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {BlueprintV2} from "../src/BlueprintV2.sol";
+import {BlueprintV3} from "../src/BlueprintV3.sol";
 
 contract BlueprintTestUpgrade is Test {
     BlueprintV1 public proxy;
@@ -65,5 +66,68 @@ contract BlueprintTestUpgrade is Test {
         // get old deployment request id
         latestDeploymentRequestId = proxy.getLatestDeploymentRequestID(address(this));
         assertEq(deploymentRequestId, latestDeploymentRequestId);
+    }
+
+    function test_UpgradeV3() public {
+        string memory ver = proxy.VERSION();
+        assertEq(ver, "1.0.0");
+
+        bytes32 pid = proxy.createProjectID();
+        bytes32 projId = proxy.getLatestUserProjectID(address(this));
+        assertEq(pid, projId);
+
+        bytes32 deploymentRequestId =
+            proxy.createDeploymentRequest(projId, solverAddress, "test base64 param", "test server url");
+        bytes32 latestDeploymentRequestId = proxy.getLatestDeploymentRequestID(address(this));
+        assertEq(deploymentRequestId, latestDeploymentRequestId);
+
+        BlueprintV2 blueprintV2 = new BlueprintV2();
+        proxy.upgradeToAndCall(address(blueprintV2), abi.encodeWithSignature("initialize()"));
+        ver = proxy.VERSION();
+        assertEq(ver, "2.0.0");
+
+        // create proposal request with old project id from v1
+        bytes32 proposalId = proxy.createProposalRequest(projId, "test base64 param", "test server url");
+        bytes32 latestProposalId = proxy.getLatestProposalRequestID(address(this));
+        assertEq(proposalId, latestProposalId);
+
+        // get old project id
+        projId = proxy.getLatestUserProjectID(address(this));
+        assertEq(pid, projId);
+
+        // get old deployment request id
+        latestDeploymentRequestId = proxy.getLatestDeploymentRequestID(address(this));
+        assertEq(deploymentRequestId, latestDeploymentRequestId);
+
+        // Sleep for one second to ensure createProjectID() will return a different value
+        vm.warp(block.timestamp + 1);
+        // create new project
+        bytes32 pidV2 = proxy.createProjectID();
+        bytes32 projIdV2 = proxy.getLatestUserProjectID(address(this));
+        assertEq(pidV2, projIdV2);
+
+        // create new deployment
+        bytes32 deploymentRequestIdV2 =
+            proxy.createDeploymentRequest(projIdV2, solverAddress, "test base64 param", "test server url");
+        bytes32 latestDeploymentRequestIdV2 = proxy.getLatestDeploymentRequestID(address(this));
+        assertEq(deploymentRequestIdV2, latestDeploymentRequestIdV2);
+
+        BlueprintV3 blueprintV3 = new BlueprintV3();
+        proxy.upgradeToAndCall(address(blueprintV3), abi.encodeWithSignature("initialize()"));
+        ver = proxy.VERSION();
+        assertEq(ver, "3.0.0");
+
+        // create proposal request with old project id from v2
+        proposalId = proxy.createProposalRequest(projIdV2, "test base64 param", "test server url");
+        latestProposalId = proxy.getLatestProposalRequestID(address(this));
+        assertEq(proposalId, latestProposalId);
+
+        // get old project id from v2
+        projId = proxy.getLatestUserProjectID(address(this));
+        assertEq(projIdV2, projId);
+
+        // get old deployment request id from V2
+        latestDeploymentRequestId = proxy.getLatestDeploymentRequestID(address(this));
+        assertEq(deploymentRequestIdV2, latestDeploymentRequestId);
     }
 }
