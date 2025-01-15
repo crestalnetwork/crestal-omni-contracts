@@ -269,7 +269,7 @@ contract BlueprintTest is Test {
         bytes32 projId = blueprint.createProjectID();
 
         bytes32 deploymentRequestId =
-                            blueprint.createDeploymentRequest(projId, solverAddress, "test base64 param", "test server url");
+            blueprint.createDeploymentRequest(projId, solverAddress, "test base64 param", "test server url");
 
         // fix v2 bug that user with different project id trigger blueprint within one block time can get same request id
         bytes32 requestId = keccak256(
@@ -289,5 +289,4 @@ contract BlueprintTest is Test {
 
         assertEq(deploymentRequestId, deploymentIdList[0]);
     }
-
 }

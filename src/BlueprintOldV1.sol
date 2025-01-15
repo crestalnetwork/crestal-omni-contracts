@@ -120,14 +120,13 @@ contract Blueprint {
     // example: {"type":"DA","latency":5,"max_throughput":20,"finality_time":10,"block_time":5,"created_at":"0001-01-01T00:00:00Z"}
     // associated base64 string: eyJ0eXBlIjoiREEiLCJsYXRlbmN5Ijo1LCJtYXhfdGhyb3VnaHB1dCI6MjAsImZpbmFsaXR5X3RpbWUiOjEwLCJibG9ja190aW1lIjo1LCJjcmVhdGVkX2F0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQ
     function createProposalRequest(bytes32 projectId, string memory base64RecParam, string memory serverURL)
-    public
-    returns (bytes32 requestID)
+        public
+        returns (bytes32 requestID)
     {
-        requestID = proposalRequest(projectId,dummyAddress, base64RecParam, serverURL);
+        requestID = proposalRequest(projectId, dummyAddress, base64RecParam, serverURL);
 
         emit RequestProposal(projectId, msg.sender, requestID, base64RecParam, serverURL);
     }
-
 
     function createPrivateProposalRequest(
         bytes32 projectId,
@@ -135,29 +134,25 @@ contract Blueprint {
         string memory base64RecParam,
         string memory serverURL
     ) public returns (bytes32 requestID) {
-
-        requestID = proposalRequest(projectId,privateSolverAddress, base64RecParam, serverURL);
+        requestID = proposalRequest(projectId, privateSolverAddress, base64RecParam, serverURL);
 
         emit RequestPrivateProposal(projectId, msg.sender, privateSolverAddress, requestID, base64RecParam, serverURL);
     }
 
-
     function createProjectIDAndProposalRequest(string memory base64RecParam, string memory serverURL) public {
         // create project id
-        bytes32 projectId =  createProjectID();
+        bytes32 projectId = createProjectID();
 
         // create proposal request
         createProposalRequest(projectId, base64RecParam, serverURL);
     }
-
 
     function proposalRequest(
         bytes32 projectId,
         address solverAddress,
         string memory base64RecParam,
         string memory serverURL
-    ) internal returns (bytes32 requestID){
-
+    ) internal returns (bytes32 requestID) {
         require(projectIDs[projectId] != address(0), "projectId does not exist");
 
         require(bytes(serverURL).length > 0, "serverURL is empty");
@@ -178,9 +173,7 @@ contract Blueprint {
             requestSolver[requestID] = solverAddress;
         }
 
-
         return requestID;
-
     }
 
     // issue DeploymentRequest
@@ -193,7 +186,6 @@ contract Blueprint {
         string memory base64Proposal,
         string memory serverURL
     ) public returns (bytes32 requestID) {
-
         require(solverAddress != address(0), "solverAddress is not valid");
 
         requestID = DeploymentRequest(projectId, solverAddress, dummyAddress, base64Proposal, serverURL);
@@ -210,7 +202,6 @@ contract Blueprint {
         string memory base64Proposal,
         string memory serverURL
     ) public returns (bytes32 requestID) {
-
         require(solverAddress != address(0), "solverAddress is not valid");
 
         requestID = DeploymentRequest(projectId, solverAddress, privateWorkerAddress, base64Proposal, serverURL);
@@ -223,15 +214,13 @@ contract Blueprint {
         emit AcceptDeployment(projectId, requestID, privateWorkerAddress);
     }
 
-
     function DeploymentRequest(
         bytes32 projectId,
         address solverAddress,
         address workerAddress,
         string memory base64Proposal,
         string memory serverURL
-    ) internal returns (bytes32 requestID){
-
+    ) internal returns (bytes32 requestID) {
         require(projectIDs[projectId] != address(0), "projectId does not exist");
 
         require(bytes(serverURL).length > 0, "serverURL is empty");
@@ -265,21 +254,18 @@ contract Blueprint {
         return requestID;
     }
 
-
-    function createProjectIDAndDeploymentRequest(
-        string memory base64Proposal,
-        string memory serverURL
-    )  public returns (bytes32 requestID) {
+    function createProjectIDAndDeploymentRequest(string memory base64Proposal, string memory serverURL)
+        public
+        returns (bytes32 requestID)
+    {
         // create project id
-        bytes32 projectId =  createProjectID();
+        bytes32 projectId = createProjectID();
 
         // create deployment request without solver recommendation
-        requestID =  DeploymentRequest(projectId, dummyAddress, dummyAddress, base64Proposal, serverURL);
-
+        requestID = DeploymentRequest(projectId, dummyAddress, dummyAddress, base64Proposal, serverURL);
 
         emit RequestDeployment(projectId, msg.sender, dummyAddress, requestID, base64Proposal, serverURL);
     }
-
 
     function submitProofOfDeployment(bytes32 projectId, bytes32 requestID, string memory proofBase64) public {
         require(projectIDs[projectId] != address(0), "projectId does not exist");
