@@ -1,22 +1,27 @@
-.PHONY: abi deploy upgrade upgrade-test check
+.PHONY: abi deploy upgrade check slither mythril
 
 ifdef ENV_FILE
 include $(ENV_FILE)
 endif
 
+LATEST=V3
 RPC_URL ?= http://127.0.0.1:8545
+UPGRADE_TO ?= $(LATEST)
 
 abi:
-	cp out/BlueprintV1.sol/BlueprintV1.json artifacts/
+	cp out/Blueprint$(LATEST).sol/Blueprint$(LATEST).json artifacts/
 
 deploy:
 	forge script ./script/Deploy.s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
 
 upgrade:
-	PROXY_ADDRESS=$(PROXY_ADDRESS) forge script ./script/Upgrade.s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
-
-upgrade-test:
-	forge script ./script/UpgradeTest.s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
+	PROXY_ADDRESS=$(PROXY_ADDRESS) forge script ./script/Upgrade$(UPGRADE_TO).s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
 
 check:
 	cast call --rpc-url $(RPC_URL) $(PROXY_ADDRESS) "VERSION()(string)"
+
+slither:
+	slither ./src/Blueprint$(LATEST).sol --checklist --exclude solc-version,unused-state,naming-convention
+
+mythril:
+	myth analyze ./src/Blueprint$(LATEST).sol --solc-json solc_remappings.json

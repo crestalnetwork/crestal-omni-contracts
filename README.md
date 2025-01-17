@@ -77,14 +77,14 @@ Deploy (copy private key from `anvil` output):
 PRIVATE_KEY=xxx make deploy
 ```
 
-Upgrade test (copy proxy address from deployed output):
-```bash
-PRIVATE_KEY=xxx PROXY_ADDRESS=xxx make upgrade-test
-```
-
-Upgrade (copy proxy address from deployed output):
+Upgrade to latest version (copy proxy address from deployed output):
 ```bash
 PRIVATE_KEY=xxx PROXY_ADDRESS=xxx make upgrade
+```
+
+Upgrade to particular version, one V+ at a time (copy proxy address from deployed output):
+```bash
+PRIVATE_KEY=xxx PROXY_ADDRESS=xxx UPGRADE_TO=Vx make upgrade
 ```
 
 Sanity check:
