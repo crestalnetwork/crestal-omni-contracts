@@ -155,18 +155,11 @@ contract Blueprint is EIP712 {
         solverReputation[addr] = reputation;
     }
 
-    function setProjectId(bytes32 projectId, address userAddr)
-        newProject(projectId)
-        internal
-    {
+    function setProjectId(bytes32 projectId, address userAddr) internal newProject(projectId) {
         require(userAddr != dummyAddress, "Invalid userAddr");
 
-        Project memory project = Project({
-            id: projectId,
-            requestProposalID: 0,
-            requestDeploymentID: 0,
-            proposedSolverAddr: dummyAddress
-        });
+        Project memory project =
+            Project({id: projectId, requestProposalID: 0, requestDeploymentID: 0, proposedSolverAddr: dummyAddress});
         // set project info into mapping
         projects[projectId] = project;
 
@@ -185,10 +178,7 @@ contract Blueprint is EIP712 {
         setProjectId(projectId, msg.sender);
     }
 
-    function upgradeProject(bytes32 projectId)
-        hasProject(projectId)
-        public
-    {
+    function upgradeProject(bytes32 projectId) public hasProject(projectId) {
         // reset project info
         projects[projectId].requestProposalID = 0;
         projects[projectId].requestDeploymentID = 0;
@@ -201,11 +191,7 @@ contract Blueprint is EIP712 {
         address solverAddress,
         string memory base64RecParam,
         string memory serverURL
-    )
-        hasProject(projectId)
-        internal
-        returns (bytes32 requestID)
-    {
+    ) internal hasProject(projectId) returns (bytes32 requestID) {
         require(bytes(serverURL).length > 0, "serverURL is empty");
         require(bytes(base64RecParam).length > 0, "base64RecParam is empty");
 
@@ -317,11 +303,7 @@ contract Blueprint is EIP712 {
         string memory base64Proposal,
         string memory serverURL,
         uint256 index
-    )
-        hasProject(projectId)
-        internal
-        returns (bytes32 requestID, bytes32 projectDeploymentId)
-    {
+    ) internal hasProject(projectId) returns (bytes32 requestID, bytes32 projectDeploymentId) {
         require(bytes(serverURL).length > 0, "serverURL is empty");
         require(bytes(base64Proposal).length > 0, "base64Proposal is empty");
 
@@ -448,7 +430,9 @@ contract Blueprint is EIP712 {
             if (workerAddress == dummyAddress) {
                 emit RequestDeployment(projectId, msg.sender, solverAddress, requestID, base64Proposals[i], serverURL);
             } else {
-                emit RequestPrivateDeployment(projectId, msg.sender, workerAddress, solverAddress, requestID, base64Proposals[i], serverURL);
+                emit RequestPrivateDeployment(
+                    projectId, msg.sender, workerAddress, solverAddress, requestID, base64Proposals[i], serverURL
+                );
 
                 // emit accept deployment event since this deployment request is accepted by blueprint
                 emit AcceptDeployment(projectId, requestID, workerAddress);
@@ -515,7 +499,9 @@ contract Blueprint is EIP712 {
         if (workerAddress == dummyAddress) {
             emit RequestDeployment(projectId, userAddress, dummyAddress, requestID, base64Proposal, serverURL);
         } else {
-            emit RequestPrivateDeployment(projectId, userAddress, workerAddress, dummyAddress, requestID, base64Proposal, serverURL);
+            emit RequestPrivateDeployment(
+                projectId, userAddress, workerAddress, dummyAddress, requestID, base64Proposal, serverURL
+            );
             // emit accept deployment event since this deployment request is accepted by blueprint
             emit AcceptDeployment(projectId, requestID, workerAddress);
         }
@@ -526,9 +512,8 @@ contract Blueprint is EIP712 {
         string memory base64Proposal,
         string memory serverURL
     ) public returns (bytes32 requestID) {
-        requestID = createCommonProjectIDAndDeploymentRequest(
-            msg.sender, projectId, base64Proposal, dummyAddress, serverURL
-        );
+        requestID =
+            createCommonProjectIDAndDeploymentRequest(msg.sender, projectId, base64Proposal, dummyAddress, serverURL);
     }
 
     function createProjectIDAndDeploymentRequestWithSig(
@@ -543,9 +528,8 @@ contract Blueprint is EIP712 {
         // get signer address
         address signerAddr = getSignerAddress(digest, signature);
 
-        requestID = createCommonProjectIDAndDeploymentRequest(
-            signerAddr, projectId, base64Proposal, dummyAddress, serverURL
-        );
+        requestID =
+            createCommonProjectIDAndDeploymentRequest(signerAddr, projectId, base64Proposal, dummyAddress, serverURL);
     }
 
     function createProjectIDAndPrivateDeploymentRequest(
@@ -592,8 +576,8 @@ contract Blueprint is EIP712 {
     }
 
     function submitProofOfDeployment(bytes32 projectId, bytes32 requestID, string memory proofBase64)
-        hasProject(projectId)
         public
+        hasProject(projectId)
     {
         require(requestID.length > 0, "requestID is empty");
         require(requestDeploymentStatus[requestID].status != Status.Init, "requestID does not exist");
@@ -610,8 +594,8 @@ contract Blueprint is EIP712 {
     }
 
     function submitDeploymentRequest(bytes32 projectId, bytes32 requestID)
-        hasProject(projectId)
         public
+        hasProject(projectId)
         returns (bool isAccepted)
     {
         require(requestID.length > 0, "requestID is empty");
@@ -636,8 +620,8 @@ contract Blueprint is EIP712 {
     }
 
     function updateWorkerDeploymentConfig(bytes32 projectId, bytes32 requestID, string memory updatedBase64Config)
-        hasProject(projectId)
         public
+        hasProject(projectId)
     {
         require(requestDeploymentStatus[requestID].status != Status.Init, "requestID does not exist");
         require(bytes(updatedBase64Config).length > 0, "updatedBase64Config is empty");
@@ -694,8 +678,9 @@ contract Blueprint is EIP712 {
 
     // get project info
     function getProjectInfo(bytes32 projectId)
+        public
+        view
         hasProjectNew(projectId)
-        public view
         returns (address, bytes32, bytes32[] memory)
     {
         bytes32[] memory requestDeploymentIDs = deploymentIdList[projects[projectId].requestDeploymentID];
