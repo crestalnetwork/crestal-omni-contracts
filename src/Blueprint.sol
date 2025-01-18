@@ -19,7 +19,12 @@ contract Blueprint is EIP712 {
         address deployWorkerAddr;
     }
 
+    // slither-disable-next-line naming-convention
     string public VERSION;
+    // This is considered initialized due to BlueprintV1 deployment, however
+    // for future upgrades, it can be seen as "uninitialized" but we should
+    // not override it again in upgrades unless absolutely necessary
+    // slither-disable-next-line uninitialized-state,constable-states
     uint256 public factor;
     uint256 public totalProposalRequest;
     uint256 public totalDeploymentRequest;
@@ -128,11 +133,16 @@ contract Blueprint is EIP712 {
 
     function setProjectId(bytes32 projectId, address userAddr) internal {
         // check project id
+        // slither-disable-next-line incorrect-equality
         require(projects[projectId].id == 0, "projectId already exists");
         require(userAddr != address(0), "Invalid userAddr");
 
-        Project memory project;
-        project.id = projectId;
+        Project memory project = Project({
+            id: projectId,
+            requestProposalID: 0,
+            requestDeploymentID: 0,
+            proposedSolverAddr: address(0)
+        });
         // set project info into mapping
         projects[projectId] = project;
 
@@ -159,12 +169,12 @@ contract Blueprint is EIP712 {
 
         projects[projectId].proposedSolverAddr = dummyAddress;
     }
-    // issue RequestProposal
+
+    // createProposalRequest
     // `base64RecParam` should be an encoded base64 ChainRequestParam json string
     // https://github.com/crestalnetwork/crestal-dashboard-backend/blob/testnet-dev/listen/type.go#L9
     // example: {"type":"DA","latency":5,"max_throughput":20,"finality_time":10,"block_time":5,"created_at":"0001-01-01T00:00:00Z"}
     // associated base64 string: eyJ0eXBlIjoiREEiLCJsYXRlbmN5Ijo1LCJtYXhfdGhyb3VnaHB1dCI6MjAsImZpbmFsaXR5X3RpbWUiOjEwLCJibG9ja190aW1lIjo1LCJjcmVhdGVkX2F0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQ
-
     function createProposalRequest(bytes32 projectId, string memory base64RecParam, string memory serverURL)
         public
         returns (bytes32 requestID)
@@ -245,9 +255,9 @@ contract Blueprint is EIP712 {
         string memory serverURL
     ) internal returns (bytes32 requestID) {
         // check project id
-        //    projects[projectId].id != 0 --> false --> new project id created by new blueprint not exit
-        //    projectIDs[projectId] != address(0) -- > false -- >. old project id created by old blueprint not exit.
-        //    both 1 and 2 are false, then project id does not exit in old and new blueprint
+        //    projects[projectId].id != 0 --> false --> new project id created by new blueprint not exist
+        //    projectIDs[projectId] != address(0) -- > false -- >. old project id created by old blueprint not exist.
+        //    both 1 and 2 are false, then project id does not exist in old and new blueprint
         require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
 
         require(bytes(serverURL).length > 0, "serverURL is empty");
@@ -258,6 +268,7 @@ contract Blueprint is EIP712 {
 
         // check request id is created or not
         // if it is created, then we need to lock it, not allow user to trigger proposal request again
+        // slither-disable-next-line incorrect-equality
         require(projects[projectId].requestProposalID == 0, "proposal requestID already exists");
 
         // FIXME: This prevents a msg.sender to create multiple requests at the same time?
@@ -342,7 +353,7 @@ contract Blueprint is EIP712 {
         require(solverAddress != address(0), "solverAddress is not valid");
         require(base64Proposals.length != 0, "base64Proposals array is empty");
 
-        bytes32 projectDeploymentID;
+        bytes32 projectDeploymentID = 0;
 
         for (uint256 i = 0; i < base64Proposals.length; ++i) {
             (bytes32 requestID, bytes32 projectDeploymentId) =
@@ -439,7 +450,7 @@ contract Blueprint is EIP712 {
         require(solverAddress != address(0), "solverAddress is not valid");
         require(base64Proposals.length != 0, "base64Proposals array is empty");
 
-        bytes32 projectDeploymentID;
+        bytes32 projectDeploymentID = 0;
 
         for (uint256 i = 0; i < base64Proposals.length; ++i) {
             (bytes32 requestID, bytes32 projectDeploymentId) = deploymentRequest(
@@ -486,7 +497,8 @@ contract Blueprint is EIP712 {
             keccak256(abi.encodePacked(block.timestamp, userAddress, base64Proposal, block.chainid, projectId));
 
         // check projectDeploymentId id is created or not
-        // if it is created, which means project is start deployment process, should lock
+        // if it is created, which means project has started deployment process, should lock
+        // slither-disable-next-line incorrect-equality
         require(projects[projectId].requestDeploymentID == 0, "deployment requestID already exists");
 
         // generate unique deployment requestID message hash
@@ -500,20 +512,17 @@ contract Blueprint is EIP712 {
         // set solver reputation
         setReputation(solverAddress);
 
-        DeploymentStatus memory deploymentStatus;
-        if (workerAddress == address(0)) {
-            // init deployment status, not picked by any worker
-            deploymentStatus.status = Status.Issued;
+        // workerAddress == address(0): init deployment status, not picked by any worker
+        // workerAddress != address(0):
+        // private deployment request
+        // set pick up deployment status since this is private deployment request,
+        // which can be picked only by designated worker
+        DeploymentStatus memory deploymentStatus = DeploymentStatus({
+            status: (workerAddress == address(0) ? Status.Issued : Status.Pickup),
+            deployWorkerAddr: workerAddress
+        });
 
-            requestDeploymentStatus[requestID] = deploymentStatus;
-        } else {
-            // private deployment request
-            // set pick up deployment status since this is private deployment request, which can be picked only by designated worker
-            deploymentStatus.status = Status.Pickup;
-            deploymentStatus.deployWorkerAddr = workerAddress;
-
-            requestDeploymentStatus[requestID] = deploymentStatus;
-        }
+        requestDeploymentStatus[requestID] = deploymentStatus;
 
         // update project solver info
         projects[projectId].proposedSolverAddr = solverAddress;
@@ -647,10 +656,9 @@ contract Blueprint is EIP712 {
         require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
 
         require(requestID.length > 0, "requestID is empty");
-        require(requestDeploymentStatus[requestID].status != Status.Init, "requestID not exit");
-        require(requestDeploymentStatus[requestID].deployWorkerAddr == msg.sender, "wrong worker address");
-
-        require(requestDeploymentStatus[requestID].status != Status.GeneratedProof, "already submit proof");
+        require(requestDeploymentStatus[requestID].status != Status.Init, "requestID does not exist");
+        require(requestDeploymentStatus[requestID].deployWorkerAddr == msg.sender, "Wrong worker address");
+        require(requestDeploymentStatus[requestID].status != Status.GeneratedProof, "Already submitted proof");
 
         // set deployment status into generatedProof
         requestDeploymentStatus[requestID].status = Status.GeneratedProof;
@@ -686,16 +694,14 @@ contract Blueprint is EIP712 {
         emit AcceptDeployment(projectId, requestID, requestDeploymentStatus[requestID].deployWorkerAddr);
     }
 
-    function UpdateWorkerDeploymentConfig(bytes32 projectId, bytes32 requestID, string memory updatedBase64Config)
+    function updateWorkerDeploymentConfig(bytes32 projectId, bytes32 requestID, string memory updatedBase64Config)
         public
     {
         // projectId backwards compatibility
         require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
 
-        require(requestDeploymentStatus[requestID].status != Status.Init, "requestID not exit");
-
+        require(requestDeploymentStatus[requestID].status != Status.Init, "requestID does not exist");
         require(bytes(updatedBase64Config).length > 0, "updatedBase64Config is empty");
-
         require(requestDeploymentStatus[requestID].status != Status.Issued, "requestID is not picked up by any worker");
 
         // reset status if it is generated proof

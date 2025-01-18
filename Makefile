@@ -21,7 +21,7 @@ check:
 	cast call --rpc-url $(RPC_URL) $(PROXY_ADDRESS) "VERSION()(string)"
 
 slither:
-	slither ./src/Blueprint$(LATEST).sol --checklist --exclude solc-version,unused-state,naming-convention
+	slither ./src/Blueprint$(LATEST).sol --checklist --filter-paths "openzeppelin"
 
 mythril:
 	myth analyze ./src/Blueprint$(LATEST).sol --solc-json solc_remappings.json
