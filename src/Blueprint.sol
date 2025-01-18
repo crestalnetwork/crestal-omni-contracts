@@ -195,16 +195,41 @@ contract Blueprint is EIP712 {
         projects[projectId].proposedSolverAddr = dummyAddress;
     }
 
-    // createProposalRequest
-    // `base64RecParam` should be an encoded base64 ChainRequestParam json string
-    // https://github.com/crestalnetwork/crestal-dashboard-backend/blob/testnet-dev/listen/type.go#L9
-    // example: {"type":"DA","latency":5,"max_throughput":20,"finality_time":10,"block_time":5,"created_at":"0001-01-01T00:00:00Z"}
-    // associated base64 string: eyJ0eXBlIjoiREEiLCJsYXRlbmN5Ijo1LCJtYXhfdGhyb3VnaHB1dCI6MjAsImZpbmFsaXR5X3RpbWUiOjEwLCJibG9ja190aW1lIjo1LCJjcmVhdGVkX2F0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQ
-    function createProposalRequest(bytes32 projectId, string memory base64RecParam, string memory serverURL)
-        public
+    function proposalRequest(
+        address userAddress,
+        bytes32 projectId,
+        address solverAddress,
+        string memory base64RecParam,
+        string memory serverURL
+    )
+        hasProject(projectId)
+        internal
         returns (bytes32 requestID)
     {
-        requestID = createCommonProposalRequest(msg.sender, projectId, base64RecParam, serverURL);
+        require(bytes(serverURL).length > 0, "serverURL is empty");
+        require(bytes(base64RecParam).length > 0, "base64RecParam is empty");
+
+        // generate unique hash
+        requestID = keccak256(abi.encodePacked(block.timestamp, userAddress, base64RecParam, block.chainid));
+
+        // check request id is created or not
+        // if it is created, then we need to lock it, not allow user to trigger proposal request again
+        // slither-disable-next-line incorrect-equality,timestamp
+        require(projects[projectId].requestProposalID == 0, "proposal requestID already exists");
+
+        // FIXME: This prevents a msg.sender to create multiple requests at the same time?
+        // For different projects, a solver is allowed to create one (latest proposal) for each.
+        latestProposalRequestID[userAddress] = requestID;
+
+        projects[projectId].requestProposalID = requestID;
+
+        totalProposalRequest++;
+
+        // set request id associated private solver
+        if (solverAddress != dummyAddress) {
+            // private proposal request
+            requestSolver[requestID] = solverAddress;
+        }
     }
 
     function createCommonProposalRequest(
@@ -216,6 +241,18 @@ contract Blueprint is EIP712 {
         requestID = proposalRequest(userAddress, projectId, dummyAddress, base64RecParam, serverURL);
 
         emit RequestProposal(projectId, userAddress, requestID, base64RecParam, serverURL);
+    }
+
+    // issue createProposalRequest
+    // `base64RecParam` should be an encoded base64 ChainRequestParam json string
+    // https://github.com/crestalnetwork/crestal-dashboard-backend/blob/testnet-dev/listen/type.go#L9
+    // example: {"type":"DA","latency":5,"max_throughput":20,"finality_time":10,"block_time":5,"created_at":"0001-01-01T00:00:00Z"}
+    // associated base64 string: eyJ0eXBlIjoiREEiLCJsYXRlbmN5Ijo1LCJtYXhfdGhyb3VnaHB1dCI6MjAsImZpbmFsaXR5X3RpbWUiOjEwLCJibG9ja190aW1lIjo1LCJjcmVhdGVkX2F0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQ
+    function createProposalRequest(bytes32 projectId, string memory base64RecParam, string memory serverURL)
+        public
+        returns (bytes32 requestID)
+    {
+        requestID = createCommonProposalRequest(msg.sender, projectId, base64RecParam, serverURL);
     }
 
     function createProposalRequestWithSig(
@@ -272,221 +309,6 @@ contract Blueprint is EIP712 {
         requestID = createCommonProposalRequest(signerAddr, projectId, base64RecParam, serverURL);
     }
 
-    function proposalRequest(
-        address userAddress,
-        bytes32 projectId,
-        address solverAddress,
-        string memory base64RecParam,
-        string memory serverURL
-    )
-        hasProject(projectId)
-        internal
-        returns (bytes32 requestID)
-    {
-        require(bytes(serverURL).length > 0, "serverURL is empty");
-        require(bytes(base64RecParam).length > 0, "base64RecParam is empty");
-
-        // generate unique hash
-        requestID = keccak256(abi.encodePacked(block.timestamp, userAddress, base64RecParam, block.chainid));
-
-        // check request id is created or not
-        // if it is created, then we need to lock it, not allow user to trigger proposal request again
-        // slither-disable-next-line incorrect-equality,timestamp
-        require(projects[projectId].requestProposalID == 0, "proposal requestID already exists");
-
-        // FIXME: This prevents a msg.sender to create multiple requests at the same time?
-        // For different projects, a solver is allowed to create one (latest proposal) for each.
-        latestProposalRequestID[userAddress] = requestID;
-
-        projects[projectId].requestProposalID = requestID;
-
-        totalProposalRequest++;
-
-        // set request id associated private solver
-        if (solverAddress != dummyAddress) {
-            // private proposal request
-            requestSolver[requestID] = solverAddress;
-        }
-    }
-
-    // issue DeploymentRequest
-    // `base64Proposal` should be encoded base64 ChainRequestParam json string
-    // that was sent in `createProposalRequest` call
-    function createDeploymentRequest(
-        bytes32 projectId,
-        address solverAddress,
-        string memory base64Proposal,
-        string memory serverURL
-    ) public returns (bytes32 requestID) {
-        requestID =
-            createCommonDeploymentRequest(msg.sender, projectId, solverAddress, base64Proposal, serverURL);
-    }
-
-    function createDeploymentRequestWithSig(
-        bytes32 projectId,
-        address solverAddress,
-        string memory base64Proposal,
-        string memory serverURL,
-        bytes memory signature
-    ) public returns (bytes32 requestID) {
-        // get EIP712 hash digest
-        bytes32 digest = getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
-
-        // get signer address
-        address signerAddr = getSignerAddress(digest, signature);
-
-        requestID =
-            createCommonDeploymentRequest(signerAddr, projectId, solverAddress, base64Proposal, serverURL);
-    }
-
-    function createCommonDeploymentRequest(
-        address userAddress,
-        bytes32 projectId,
-        address solverAddress,
-        string memory base64Proposal,
-        string memory serverURL
-    ) public returns (bytes32 requestID) {
-        require(solverAddress != dummyAddress, "solverAddress is not valid");
-
-        bytes32 projectDeploymentId;
-        (requestID, projectDeploymentId) =
-            deploymentRequest(userAddress, projectId, solverAddress, dummyAddress, base64Proposal, serverURL, 0);
-        totalDeploymentRequest++;
-
-        // once we got request deploymentID, then we set project requestDeploymentID, which points to a list of deploymentID
-        projects[projectId].requestDeploymentID = projectDeploymentId;
-
-        // push request deploymentID into map, link to a project
-        deploymentIdList[projectDeploymentId].push(requestID);
-
-        emit RequestDeployment(projectId, userAddress, solverAddress, requestID, base64Proposal, serverURL);
-    }
-
-    function createMultipleDeploymentRequest(
-        bytes32 projectId,
-        address solverAddress,
-        string[] memory base64Proposals,
-        string memory serverURL
-    ) public returns (bytes32 projectDeploymentID) {
-        require(solverAddress != dummyAddress, "solverAddress is not valid");
-        require(base64Proposals.length != 0, "base64Proposals array is empty");
-
-        for (uint256 i = 0; i < base64Proposals.length; ++i) {
-            (bytes32 requestID, bytes32 projectDeploymentId) =
-                deploymentRequest(msg.sender, projectId, solverAddress, dummyAddress, base64Proposals[i], serverURL, i);
-
-            // slither-disable-next-line timestamp
-            if (projectDeploymentID != 0) {
-                deploymentIdList[projectDeploymentID].push(requestID);
-            } else {
-                // push request deploymentID into map, link to a project
-                projectDeploymentID = projectDeploymentId;
-                deploymentIdList[projectDeploymentID].push(requestID);
-            }
-
-            emit RequestDeployment(projectId, msg.sender, solverAddress, requestID, base64Proposals[i], serverURL);
-        }
-        totalDeploymentRequest += base64Proposals.length;
-
-        // once we got request deploymentID, then we set project requestDeploymentID, which points to a list of deploymentID
-        projects[projectId].requestDeploymentID = projectDeploymentID;
-    }
-
-    function createPrivateDeploymentRequest(
-        bytes32 projectId,
-        address solverAddress,
-        address privateWorkerAddress,
-        string memory base64Proposal,
-        string memory serverURL
-    ) public returns (bytes32 requestID) {
-        requestID = createCommonPrivateDeploymentRequest(
-            msg.sender, projectId, solverAddress, privateWorkerAddress, base64Proposal, serverURL
-        );
-    }
-
-    function createPrivateDeploymentRequestWithSig(
-        bytes32 projectId,
-        address solverAddress,
-        address privateWorkerAddress,
-        string memory base64Proposal,
-        string memory serverURL,
-        bytes memory signature
-    ) public returns (bytes32 requestID) {
-        // get EIP712 hash digest
-        bytes32 digest = getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
-
-        // get signer address
-        address signerAddr = getSignerAddress(digest, signature);
-
-        requestID = createCommonPrivateDeploymentRequest(
-            signerAddr, projectId, solverAddress, privateWorkerAddress, base64Proposal, serverURL
-        );
-    }
-
-    function createCommonPrivateDeploymentRequest(
-        address userAddress,
-        bytes32 projectId,
-        address solverAddress,
-        address privateWorkerAddress,
-        string memory base64Proposal,
-        string memory serverURL
-    ) internal returns (bytes32 requestID) {
-        require(solverAddress != dummyAddress, "solverAddress is not valid");
-
-        bytes32 projectDeploymentId;
-        (requestID, projectDeploymentId) =
-            deploymentRequest(userAddress, projectId, solverAddress, privateWorkerAddress, base64Proposal, serverURL, 0);
-        totalDeploymentRequest++;
-
-        // once we got request deploymentID, then we set project requestDeploymentID, which points to a list of deploymentID
-        projects[projectId].requestDeploymentID = projectDeploymentId;
-
-        // push request deploymentID into map, link to a project
-        deploymentIdList[projectDeploymentId].push(requestID);
-
-        emit RequestPrivateDeployment(
-            projectId, userAddress, privateWorkerAddress, solverAddress, requestID, base64Proposal, serverURL
-        );
-
-        // emit accept deployment event since this deployment request is accepted by blueprint
-        emit AcceptDeployment(projectId, requestID, privateWorkerAddress);
-    }
-
-    function createMultiplePrivateDeploymentRequest(
-        bytes32 projectId,
-        address solverAddress,
-        address privateWorkerAddress,
-        string[] memory base64Proposals,
-        string memory serverURL
-    ) public returns (bytes32 projectDeploymentID) {
-        require(solverAddress != dummyAddress, "solverAddress is not valid");
-        require(base64Proposals.length != 0, "base64Proposals array is empty");
-
-        for (uint256 i = 0; i < base64Proposals.length; ++i) {
-            (bytes32 requestID, bytes32 projectDeploymentId) = deploymentRequest(
-                msg.sender, projectId, solverAddress, privateWorkerAddress, base64Proposals[i], serverURL, i
-            );
-
-            // slither-disable-next-line timestamp
-            if (projectDeploymentID != 0) {
-                deploymentIdList[projectDeploymentID].push(requestID);
-            } else {
-                projectDeploymentID = projectDeploymentId;
-                // push request deploymentID into map, link to a project
-                deploymentIdList[projectDeploymentID].push(requestID);
-            }
-
-            emit RequestDeployment(projectId, msg.sender, solverAddress, requestID, base64Proposals[i], serverURL);
-
-            // emit accept deployment event since this deployment request is accepted by blueprint
-            emit AcceptDeployment(projectId, requestID, privateWorkerAddress);
-        }
-        totalDeploymentRequest += base64Proposals.length;
-
-        // once we got request deploymentID, then we set project requestDeploymentID, which points to a list of deploymentID
-        projects[projectId].requestDeploymentID = projectDeploymentID;
-    }
-
     function deploymentRequest(
         address userAddress,
         bytes32 projectId,
@@ -537,12 +359,176 @@ contract Blueprint is EIP712 {
         projects[projectId].proposedSolverAddr = solverAddress;
     }
 
+    function createCommonDeploymentRequest(
+        address userAddress,
+        bytes32 projectId,
+        address solverAddress,
+        address workerAddress,
+        string memory base64Proposal,
+        string memory serverURL
+    ) internal returns (bytes32 requestID) {
+        require(solverAddress != dummyAddress, "solverAddress is not valid");
+
+        bytes32 projectDeploymentId;
+        (requestID, projectDeploymentId) =
+            deploymentRequest(userAddress, projectId, solverAddress, workerAddress, base64Proposal, serverURL, 0);
+        totalDeploymentRequest++;
+
+        // once we got request deploymentID, then we set project requestDeploymentID, which points to a list of deploymentID
+        projects[projectId].requestDeploymentID = projectDeploymentId;
+
+        // push request deploymentID into map, link to a project
+        deploymentIdList[projectDeploymentId].push(requestID);
+
+        if (workerAddress == dummyAddress) {
+            emit RequestDeployment(projectId, userAddress, solverAddress, requestID, base64Proposal, serverURL);
+        } else {
+            emit RequestPrivateDeployment(
+                projectId, userAddress, workerAddress, solverAddress, requestID, base64Proposal, serverURL
+            );
+
+            // emit accept deployment event since this deployment request is accepted by blueprint
+            emit AcceptDeployment(projectId, requestID, workerAddress);
+        }
+    }
+
+    // issue DeploymentRequest
+    // `base64Proposal` should be encoded base64 ChainRequestParam json string
+    // that was sent in `createProposalRequest` call
+    function createDeploymentRequest(
+        bytes32 projectId,
+        address solverAddress,
+        string memory base64Proposal,
+        string memory serverURL
+    ) public returns (bytes32 requestID) {
+        requestID =
+            createCommonDeploymentRequest(msg.sender, projectId, solverAddress, dummyAddress, base64Proposal, serverURL);
+    }
+
+    function createDeploymentRequestWithSig(
+        bytes32 projectId,
+        address solverAddress,
+        string memory base64Proposal,
+        string memory serverURL,
+        bytes memory signature
+    ) public returns (bytes32 requestID) {
+        // get EIP712 hash digest
+        bytes32 digest = getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
+
+        // get signer address
+        address signerAddr = getSignerAddress(digest, signature);
+
+        requestID =
+            createCommonDeploymentRequest(signerAddr, projectId, solverAddress, dummyAddress, base64Proposal, serverURL);
+    }
+
+    function createMultipleDeploymentRequest(
+        bytes32 projectId,
+        address solverAddress,
+        address workerAddress,
+        string[] memory base64Proposals,
+        string memory serverURL
+    ) public returns (bytes32 projectDeploymentID) {
+        require(solverAddress != dummyAddress, "solverAddress is not valid");
+        require(base64Proposals.length != 0, "base64Proposals array is empty");
+
+        for (uint256 i = 0; i < base64Proposals.length; ++i) {
+            (bytes32 requestID, bytes32 projectDeploymentId) =
+                deploymentRequest(msg.sender, projectId, solverAddress, workerAddress, base64Proposals[i], serverURL, i);
+
+            // slither-disable-next-line timestamp
+            if (projectDeploymentID != 0) {
+                deploymentIdList[projectDeploymentID].push(requestID);
+            } else {
+                // push request deploymentID into map, link to a project
+                projectDeploymentID = projectDeploymentId;
+                deploymentIdList[projectDeploymentID].push(requestID);
+            }
+
+            if (workerAddress == dummyAddress) {
+                emit RequestDeployment(projectId, msg.sender, solverAddress, requestID, base64Proposals[i], serverURL);
+            } else {
+                emit RequestPrivateDeployment(projectId, msg.sender, workerAddress, solverAddress, requestID, base64Proposals[i], serverURL);
+
+                // emit accept deployment event since this deployment request is accepted by blueprint
+                emit AcceptDeployment(projectId, requestID, workerAddress);
+            }
+        }
+        totalDeploymentRequest += base64Proposals.length;
+
+        // once we got request deploymentID, then we set project requestDeploymentID, which points to a list of deploymentID
+        projects[projectId].requestDeploymentID = projectDeploymentID;
+    }
+
+    function createPrivateDeploymentRequest(
+        bytes32 projectId,
+        address solverAddress,
+        address privateWorkerAddress,
+        string memory base64Proposal,
+        string memory serverURL
+    ) public returns (bytes32 requestID) {
+        requestID = createCommonDeploymentRequest(
+            msg.sender, projectId, solverAddress, privateWorkerAddress, base64Proposal, serverURL
+        );
+    }
+
+    function createPrivateDeploymentRequestWithSig(
+        bytes32 projectId,
+        address solverAddress,
+        address privateWorkerAddress,
+        string memory base64Proposal,
+        string memory serverURL,
+        bytes memory signature
+    ) public returns (bytes32 requestID) {
+        // get EIP712 hash digest
+        bytes32 digest = getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
+
+        // get signer address
+        address signerAddr = getSignerAddress(digest, signature);
+
+        requestID = createCommonDeploymentRequest(
+            signerAddr, projectId, solverAddress, privateWorkerAddress, base64Proposal, serverURL
+        );
+    }
+
+    function createCommonProjectIDAndDeploymentRequest(
+        address userAddress,
+        bytes32 projectId,
+        string memory base64Proposal,
+        address workerAddress,
+        string memory serverURL
+    ) internal returns (bytes32 requestID) {
+        // set project id
+        setProjectId(projectId, userAddress);
+
+        // create deployment request without solver recommendation, so leave solver address as dummyAddress
+        // since this is public deployment request leave worker address as dummyAddress
+        bytes32 projectDeploymentId;
+        (requestID, projectDeploymentId) =
+            deploymentRequest(userAddress, projectId, dummyAddress, workerAddress, base64Proposal, serverURL, 0);
+        totalDeploymentRequest++;
+
+        projects[projectId].requestDeploymentID = projectDeploymentId;
+
+        deploymentIdList[projectDeploymentId].push(requestID);
+
+        if (workerAddress == dummyAddress) {
+            emit RequestDeployment(projectId, userAddress, dummyAddress, requestID, base64Proposal, serverURL);
+        } else {
+            emit RequestPrivateDeployment(projectId, userAddress, workerAddress, dummyAddress, requestID, base64Proposal, serverURL);
+            // emit accept deployment event since this deployment request is accepted by blueprint
+            emit AcceptDeployment(projectId, requestID, workerAddress);
+        }
+    }
+
     function createProjectIDAndDeploymentRequest(
         bytes32 projectId,
         string memory base64Proposal,
         string memory serverURL
     ) public returns (bytes32 requestID) {
-        requestID = createCommonProjectIDAndDeploymentRequest(msg.sender, projectId, base64Proposal, serverURL);
+        requestID = createCommonProjectIDAndDeploymentRequest(
+            msg.sender, projectId, base64Proposal, dummyAddress, serverURL
+        );
     }
 
     function createProjectIDAndDeploymentRequestWithSig(
@@ -557,57 +543,9 @@ contract Blueprint is EIP712 {
         // get signer address
         address signerAddr = getSignerAddress(digest, signature);
 
-        requestID = createCommonProjectIDAndDeploymentRequest(signerAddr, projectId, base64Proposal, serverURL);
-    }
-
-    function createCommonProjectIDAndDeploymentRequest(
-        address userAddress,
-        bytes32 projectId,
-        string memory base64Proposal,
-        string memory serverURL
-    ) internal returns (bytes32 requestID) {
-        // set project id
-        setProjectId(projectId, userAddress);
-
-        // create deployment request without solver recommendation, so leave solver address as dummyAddress
-        // since this is public deployment request leave worker address as dummyAddress
-        bytes32 projectDeploymentId;
-        (requestID, projectDeploymentId) =
-            deploymentRequest(userAddress, projectId, dummyAddress, dummyAddress, base64Proposal, serverURL, 0);
-        totalDeploymentRequest++;
-
-        projects[projectId].requestDeploymentID = projectDeploymentId;
-
-        deploymentIdList[projectDeploymentId].push(requestID);
-
-        emit RequestDeployment(projectId, userAddress, dummyAddress, requestID, base64Proposal, serverURL);
-    }
-
-    function createCommonProjectIDAndPrivateDeploymentRequest(
-        address userAddress,
-        bytes32 projectId,
-        string memory base64Proposal,
-        address privateWorkerAddress,
-        string memory serverURL
-    ) internal returns (bytes32 requestID) {
-        // set project id
-        setProjectId(projectId, userAddress);
-
-        // create deployment request without solver recommendation, so leave solver address as dummyAddress
-        // since this is public deployment request leave worker address as dummyAddress
-        bytes32 projectDeploymentId;
-        (requestID, projectDeploymentId) =
-            deploymentRequest(userAddress, projectId, dummyAddress, privateWorkerAddress, base64Proposal, serverURL, 0);
-        totalDeploymentRequest++;
-
-        projects[projectId].requestDeploymentID = projectDeploymentId;
-
-        deploymentIdList[projectDeploymentId].push(requestID);
-
-        emit RequestDeployment(projectId, userAddress, dummyAddress, requestID, base64Proposal, serverURL);
-
-        // emit accept deployment event since this deployment request is accepted by blueprint
-        emit AcceptDeployment(projectId, requestID, privateWorkerAddress);
+        requestID = createCommonProjectIDAndDeploymentRequest(
+            signerAddr, projectId, base64Proposal, dummyAddress, serverURL
+        );
     }
 
     function createProjectIDAndPrivateDeploymentRequest(
@@ -616,7 +554,7 @@ contract Blueprint is EIP712 {
         address privateWorkerAddress,
         string memory serverURL
     ) public returns (bytes32 requestID) {
-        requestID = createCommonProjectIDAndPrivateDeploymentRequest(
+        requestID = createCommonProjectIDAndDeploymentRequest(
             msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL
         );
     }
@@ -634,7 +572,7 @@ contract Blueprint is EIP712 {
         // get signer address
         address signerAddr = getSignerAddress(digest, signature);
 
-        requestID = createCommonProjectIDAndPrivateDeploymentRequest(
+        requestID = createCommonProjectIDAndDeploymentRequest(
             signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL
         );
     }
