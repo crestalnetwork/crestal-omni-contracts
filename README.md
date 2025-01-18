@@ -38,6 +38,23 @@ This only needs to be [set up](https://docs.openzeppelin.com/upgrades-plugins/1.
 
 (Optional) Recommend installing [solc-select](https://github.com/crytic/solc-select) to manage Solidity compiler versions.
 
+(Optional) Security tools
+
+#### Dependencies
+
+Install [pipx](https://github.com/pypa/pipx?tab=readme-ov-file#install-pipx).
+
+#### Slither
+
+```bash
+pipx install slither-analyzer
+```
+
+#### Mythril
+```bash
+pipx install mythril
+```
+
 ## Usage
 
 ### Development
@@ -56,6 +73,12 @@ forge build
 Test contracts:
 ```bash
 forge test
+```
+
+Security checks:
+```bash
+make slither
+make mythril
 ```
 
 Generate abi (for external access):
