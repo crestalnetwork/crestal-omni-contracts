@@ -107,6 +107,30 @@ contract Blueprint is EIP712 {
         bytes32 indexed projectID, bytes32 indexed requestID, address workerAddress, string base64Config
     );
 
+    modifier newProject(bytes32 projectId) {
+        // check project id
+        // slither-disable-next-line incorrect-equality,timestamp
+        require(projects[projectId].id == 0, "projectId already exists");
+        _;
+    }
+
+    modifier hasProjectNew(bytes32 projectId) {
+        // only new upgraded (v2) blueprint uses this function
+        // slither-disable-next-line timestamp
+        require(projects[projectId].id != 0, "projectId does not exist");
+        _;
+    }
+
+    modifier hasProject(bytes32 projectId) {
+        // projectId backwards compatibility
+        //    projects[projectId].id != 0 --> false --> new project id created by new blueprint not exist
+        //    projectIDs[projectId] != address(0) -- > false -- >. old project id created by old blueprint not exist.
+        //    both 1 and 2 are false, then project id does not exist in old and new blueprint
+        // slither-disable-next-line timestamp
+        require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
+        _;
+    }
+
     // get solver reputation
     function getReputation(address addr) public view returns (uint256) {
         return solverReputation[addr];
@@ -131,10 +155,10 @@ contract Blueprint is EIP712 {
         solverReputation[addr] = reputation;
     }
 
-    function setProjectId(bytes32 projectId, address userAddr) internal {
-        // check project id
-        // slither-disable-next-line incorrect-equality
-        require(projects[projectId].id == 0, "projectId already exists");
+    function setProjectId(bytes32 projectId, address userAddr)
+        newProject(projectId)
+        internal
+    {
         require(userAddr != address(0), "Invalid userAddr");
 
         Project memory project = Project({
@@ -154,19 +178,20 @@ contract Blueprint is EIP712 {
 
     function createProjectID() public returns (bytes32 projectId) {
         // generate unique project id
+        // FIXME: typically we shouldn't just use block.timestamp, as this prevents multi-project
+        // creation during a single block - which shouldn't be impossible...
         projectId = keccak256(abi.encodePacked(block.timestamp, msg.sender, block.chainid));
 
         setProjectId(projectId, msg.sender);
     }
 
-    function upgradeProject(bytes32 projectId) public {
-        // check project id
-        require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
+    function upgradeProject(bytes32 projectId)
+        hasProject(projectId)
+        public
+    {
         // reset project info
         projects[projectId].requestProposalID = 0;
-
         projects[projectId].requestDeploymentID = 0;
-
         projects[projectId].proposedSolverAddr = dummyAddress;
     }
 
@@ -253,13 +278,11 @@ contract Blueprint is EIP712 {
         address solverAddress,
         string memory base64RecParam,
         string memory serverURL
-    ) internal returns (bytes32 requestID) {
-        // check project id
-        //    projects[projectId].id != 0 --> false --> new project id created by new blueprint not exist
-        //    projectIDs[projectId] != address(0) -- > false -- >. old project id created by old blueprint not exist.
-        //    both 1 and 2 are false, then project id does not exist in old and new blueprint
-        require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
-
+    )
+        hasProject(projectId)
+        internal
+        returns (bytes32 requestID)
+    {
         require(bytes(serverURL).length > 0, "serverURL is empty");
         require(bytes(base64RecParam).length > 0, "base64RecParam is empty");
 
@@ -268,7 +291,7 @@ contract Blueprint is EIP712 {
 
         // check request id is created or not
         // if it is created, then we need to lock it, not allow user to trigger proposal request again
-        // slither-disable-next-line incorrect-equality
+        // slither-disable-next-line incorrect-equality,timestamp
         require(projects[projectId].requestProposalID == 0, "proposal requestID already exists");
 
         // FIXME: This prevents a msg.sender to create multiple requests at the same time?
@@ -291,7 +314,6 @@ contract Blueprint is EIP712 {
     // issue DeploymentRequest
     // `base64Proposal` should be encoded base64 ChainRequestParam json string
     // that was sent in `createProposalRequest` call
-    // TODO: Why not just pass in requestID here?
     function createDeploymentRequest(
         bytes32 projectId,
         address solverAddress,
@@ -332,6 +354,7 @@ contract Blueprint is EIP712 {
 
         (bytes32 requestID, bytes32 projectDeploymentId) =
             deploymentRequest(userAddress, projectId, solverAddress, dummyAddress, base64Proposal, serverURL, 0);
+        totalDeploymentRequest++;
 
         // once we got request deploymentID, then we set project requestDeploymentID, which points to a list of deploymentID
         projects[projectId].requestDeploymentID = projectDeploymentId;
@@ -359,6 +382,7 @@ contract Blueprint is EIP712 {
             (bytes32 requestID, bytes32 projectDeploymentId) =
                 deploymentRequest(msg.sender, projectId, solverAddress, dummyAddress, base64Proposals[i], serverURL, i);
 
+            // slither-disable-next-line timestamp
             if (projectDeploymentID != 0) {
                 deploymentIdList[projectDeploymentID].push(requestID);
             } else {
@@ -369,6 +393,7 @@ contract Blueprint is EIP712 {
 
             emit RequestDeployment(projectId, msg.sender, solverAddress, requestID, base64Proposals[i], serverURL);
         }
+        totalDeploymentRequest += base64Proposals.length;
 
         // once we got request deploymentID, then we set project requestDeploymentID, which points to a list of deploymentID
         projects[projectId].requestDeploymentID = projectDeploymentID;
@@ -423,6 +448,7 @@ contract Blueprint is EIP712 {
 
         (bytes32 requestID, bytes32 projectDeploymentId) =
             deploymentRequest(userAddress, projectId, solverAddress, privateWorkerAddress, base64Proposal, serverURL, 0);
+        totalDeploymentRequest++;
 
         // once we got request deploymentID, then we set project requestDeploymentID, which points to a list of deploymentID
         projects[projectId].requestDeploymentID = projectDeploymentId;
@@ -457,6 +483,7 @@ contract Blueprint is EIP712 {
                 msg.sender, projectId, solverAddress, privateWorkerAddress, base64Proposals[i], serverURL, i
             );
 
+            // slither-disable-next-line timestamp
             if (projectDeploymentID != 0) {
                 deploymentIdList[projectDeploymentID].push(requestID);
             } else {
@@ -470,6 +497,7 @@ contract Blueprint is EIP712 {
             // emit accept deployment event since this deployment request is accepted by blueprint
             emit AcceptDeployment(projectId, requestID, privateWorkerAddress);
         }
+        totalDeploymentRequest += base64Proposals.length;
 
         // once we got request deploymentID, then we set project requestDeploymentID, which points to a list of deploymentID
         projects[projectId].requestDeploymentID = projectDeploymentID;
@@ -485,10 +513,11 @@ contract Blueprint is EIP712 {
         string memory base64Proposal,
         string memory serverURL,
         uint256 index
-    ) internal returns (bytes32 requestID, bytes32 projectDeploymentId) {
-        // projectId backwards compatibility
-        require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
-
+    )
+        hasProject(projectId)
+        internal
+        returns (bytes32 requestID, bytes32 projectDeploymentId)
+    {
         require(bytes(serverURL).length > 0, "serverURL is empty");
         require(bytes(base64Proposal).length > 0, "base64Proposal is empty");
 
@@ -498,7 +527,7 @@ contract Blueprint is EIP712 {
 
         // check projectDeploymentId id is created or not
         // if it is created, which means project has started deployment process, should lock
-        // slither-disable-next-line incorrect-equality
+        // slither-disable-next-line incorrect-equality,timestamp
         require(projects[projectId].requestDeploymentID == 0, "deployment requestID already exists");
 
         // generate unique deployment requestID message hash
@@ -506,8 +535,6 @@ contract Blueprint is EIP712 {
             keccak256(abi.encodePacked(block.timestamp, userAddress, base64Proposal, block.chainid, projectId, index));
 
         latestDeploymentRequestID[userAddress] = requestID;
-
-        totalDeploymentRequest++;
 
         // set solver reputation
         setReputation(solverAddress);
@@ -568,6 +595,7 @@ contract Blueprint is EIP712 {
         // since this is public deployment request leave worker address as dummyAddress
         (bytes32 requestID, bytes32 projectDeploymentId) =
             deploymentRequest(userAddress, projectId, dummyAddress, dummyAddress, base64Proposal, serverURL, 0);
+        totalDeploymentRequest++;
 
         projects[projectId].requestDeploymentID = projectDeploymentId;
 
@@ -592,6 +620,7 @@ contract Blueprint is EIP712 {
         // since this is public deployment request leave worker address as dummyAddress
         (bytes32 requestID, bytes32 projectDeploymentId) =
             deploymentRequest(userAddress, projectId, dummyAddress, privateWorkerAddress, base64Proposal, serverURL, 0);
+        totalDeploymentRequest++;
 
         projects[projectId].requestDeploymentID = projectDeploymentId;
 
@@ -651,10 +680,10 @@ contract Blueprint is EIP712 {
         return requestID;
     }
 
-    function submitProofOfDeployment(bytes32 projectId, bytes32 requestID, string memory proofBase64) public {
-        // projectId backwards compatibility
-        require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
-
+    function submitProofOfDeployment(bytes32 projectId, bytes32 requestID, string memory proofBase64)
+        hasProject(projectId)
+        public
+    {
         require(requestID.length > 0, "requestID is empty");
         require(requestDeploymentStatus[requestID].status != Status.Init, "requestID does not exist");
         require(requestDeploymentStatus[requestID].deployWorkerAddr == msg.sender, "Wrong worker address");
@@ -669,10 +698,11 @@ contract Blueprint is EIP712 {
         emit GeneratedProofOfDeployment(projectId, requestID, proofBase64);
     }
 
-    function submitDeploymentRequest(bytes32 projectId, bytes32 requestID) public returns (bool isAccepted) {
-        // projectId backwards compatibility
-        require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
-
+    function submitDeploymentRequest(bytes32 projectId, bytes32 requestID)
+        hasProject(projectId)
+        public
+        returns (bool isAccepted)
+    {
         require(requestID.length > 0, "requestID is empty");
         require(requestDeploymentStatus[requestID].status != Status.Init, "requestID does not exist");
         require(
@@ -695,11 +725,9 @@ contract Blueprint is EIP712 {
     }
 
     function updateWorkerDeploymentConfig(bytes32 projectId, bytes32 requestID, string memory updatedBase64Config)
+        hasProject(projectId)
         public
     {
-        // projectId backwards compatibility
-        require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
-
         require(requestDeploymentStatus[requestID].status != Status.Init, "requestID does not exist");
         require(bytes(updatedBase64Config).length > 0, "updatedBase64Config is empty");
         require(requestDeploymentStatus[requestID].status != Status.Issued, "requestID is not picked up by any worker");
@@ -754,9 +782,11 @@ contract Blueprint is EIP712 {
     }
 
     // get project info
-    function getProjectInfo(bytes32 projectId) public view returns (address, bytes32, bytes32[] memory) {
-        // only new upgrade blueprint use this function
-        require(projects[projectId].id != 0, "projectId does not exist");
+    function getProjectInfo(bytes32 projectId)
+        hasProjectNew(projectId)
+        public view
+        returns (address, bytes32, bytes32[] memory)
+    {
         bytes32[] memory requestDeploymentIDs = deploymentIdList[projects[projectId].requestDeploymentID];
 
         return (projects[projectId].proposedSolverAddr, projects[projectId].requestProposalID, requestDeploymentIDs);
