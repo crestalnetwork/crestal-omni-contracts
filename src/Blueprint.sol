@@ -127,7 +127,7 @@ contract Blueprint is EIP712 {
         //    projectIDs[projectId] != address(0) -- > false -- >. old project id created by old blueprint not exist.
         //    both 1 and 2 are false, then project id does not exist in old and new blueprint
         // slither-disable-next-line timestamp
-        require(projects[projectId].id != 0 || projectIDs[projectId] != address(0), "projectId does not exist");
+        require(projects[projectId].id != 0 || projectIDs[projectId] != dummyAddress, "projectId does not exist");
         _;
     }
 
@@ -159,13 +159,13 @@ contract Blueprint is EIP712 {
         newProject(projectId)
         internal
     {
-        require(userAddr != address(0), "Invalid userAddr");
+        require(userAddr != dummyAddress, "Invalid userAddr");
 
         Project memory project = Project({
             id: projectId,
             requestProposalID: 0,
             requestDeploymentID: 0,
-            proposedSolverAddr: address(0)
+            proposedSolverAddr: dummyAddress
         });
         // set project info into mapping
         projects[projectId] = project;
@@ -303,7 +303,7 @@ contract Blueprint is EIP712 {
         totalProposalRequest++;
 
         // set request id associated private solver
-        if (solverAddress != address(0)) {
+        if (solverAddress != dummyAddress) {
             // private proposal request
             requestSolver[requestID] = solverAddress;
         }
@@ -346,7 +346,7 @@ contract Blueprint is EIP712 {
         string memory base64Proposal,
         string memory serverURL
     ) public returns (bytes32 requestID) {
-        require(solverAddress != address(0), "solverAddress is not valid");
+        require(solverAddress != dummyAddress, "solverAddress is not valid");
 
         bytes32 projectDeploymentId;
         (requestID, projectDeploymentId) =
@@ -368,7 +368,7 @@ contract Blueprint is EIP712 {
         string[] memory base64Proposals,
         string memory serverURL
     ) public returns (bytes32 projectDeploymentID) {
-        require(solverAddress != address(0), "solverAddress is not valid");
+        require(solverAddress != dummyAddress, "solverAddress is not valid");
         require(base64Proposals.length != 0, "base64Proposals array is empty");
 
         for (uint256 i = 0; i < base64Proposals.length; ++i) {
@@ -431,7 +431,7 @@ contract Blueprint is EIP712 {
         string memory base64Proposal,
         string memory serverURL
     ) internal returns (bytes32 requestID) {
-        require(solverAddress != address(0), "solverAddress is not valid");
+        require(solverAddress != dummyAddress, "solverAddress is not valid");
 
         bytes32 projectDeploymentId;
         (requestID, projectDeploymentId) =
@@ -459,7 +459,7 @@ contract Blueprint is EIP712 {
         string[] memory base64Proposals,
         string memory serverURL
     ) public returns (bytes32 projectDeploymentID) {
-        require(solverAddress != address(0), "solverAddress is not valid");
+        require(solverAddress != dummyAddress, "solverAddress is not valid");
         require(base64Proposals.length != 0, "base64Proposals array is empty");
 
         for (uint256 i = 0; i < base64Proposals.length; ++i) {
@@ -527,7 +527,7 @@ contract Blueprint is EIP712 {
         // set pick up deployment status since this is private deployment request,
         // which can be picked only by designated worker
         DeploymentStatus memory deploymentStatus = DeploymentStatus({
-            status: (workerAddress == address(0) ? Status.Issued : Status.Pickup),
+            status: (workerAddress == dummyAddress ? Status.Issued : Status.Pickup),
             deployWorkerAddr: workerAddress
         });
 
