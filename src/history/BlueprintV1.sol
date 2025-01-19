@@ -35,7 +35,7 @@ contract Blueprint {
     mapping(bytes32 => address) private requestWorker;
     mapping(bytes32 => address) private projectIDs;
 
-    address public dummyAddress = address(0);
+    address public constant dummyAddress = address(0);
 
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);
     event RequestProposal(
