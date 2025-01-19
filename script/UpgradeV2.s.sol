@@ -14,7 +14,9 @@ contract DeployScript is Script {
         address proxyAddr = vm.envAddress("PROXY_ADDRESS");
         Options memory opts;
         opts.referenceContract = "BlueprintV1.sol";
-        Upgrades.upgradeProxy(proxyAddr, "BlueprintV2.sol:BlueprintV2", abi.encodeCall(BlueprintV2.initialize, ()), opts);
+        Upgrades.upgradeProxy(
+            proxyAddr, "BlueprintV2.sol:BlueprintV2", abi.encodeCall(BlueprintV2.initialize, ()), opts
+        );
         BlueprintV2 proxy = BlueprintV2(proxyAddr);
         console.log("New Version:", proxy.VERSION());
 

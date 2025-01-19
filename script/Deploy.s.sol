@@ -11,7 +11,8 @@ contract DeployScript is Script {
     function run() public {
         vm.startBroadcast();
 
-        address proxy = Upgrades.deployUUPSProxy("BlueprintV1.sol:BlueprintV1", abi.encodeCall(BlueprintV1.initialize, ()));
+        address proxy =
+            Upgrades.deployUUPSProxy("BlueprintV1.sol:BlueprintV1", abi.encodeCall(BlueprintV1.initialize, ()));
         console.log("Deployed proxy:", proxy);
         BlueprintV1 bv1 = BlueprintV1(proxy);
         console.log("Version:", bv1.VERSION());
