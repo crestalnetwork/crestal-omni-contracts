@@ -4,7 +4,6 @@ pragma solidity ^0.8.26;
 import {Test, console} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {BlueprintV1} from "../src/BlueprintV1.sol";
-import {BlueprintUpgradeTest} from "../src/BlueprintUpgradeTest.sol";
 import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 import {BlueprintV2} from "../src/BlueprintV2.sol";
 import {BlueprintV3} from "../src/BlueprintV3.sol";
@@ -24,16 +23,6 @@ contract BlueprintTestUpgrade is Test {
 
         // init solver address
         solverAddress = address(0x275960ad41DbE218bBf72cDF612F88b5C6f40648);
-    }
-
-    function test_Upgrade() public {
-        string memory ver = proxy.VERSION();
-        assertEq(ver, "1.0.0");
-
-        BlueprintUpgradeTest blueup = new BlueprintUpgradeTest();
-        proxy.upgradeToAndCall(address(blueup), abi.encodeWithSignature("initialize()"));
-        ver = proxy.VERSION();
-        assertEq(ver, "TESTING");
     }
 
     function test_UpgradeV2() public {
