@@ -6,8 +6,9 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import "./Blueprint.sol";
+import "./Payment.sol";
 
-contract BlueprintV3 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Blueprint {
+contract BlueprintV3 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Blueprint, Payment {
     string public constant SIGNING_DOMAIN = "app.crestal.network";
 
     function initialize() public reinitializer(3) {

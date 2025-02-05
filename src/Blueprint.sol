@@ -5,7 +5,7 @@ pragma solidity ^0.8.26;
 import {EIP712} from "./EIP712.sol";
 import {Payment} from "./Payment.sol";
 
-contract Blueprint is EIP712,Payment {
+contract Blueprint is EIP712 {
     enum Status {
         Init,
         Issued,
