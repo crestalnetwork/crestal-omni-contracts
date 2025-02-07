@@ -2,10 +2,9 @@
 
 pragma solidity ^0.8.26;
 
-import {EIP712} from "./EIP712.sol";
-import {Payment} from "./Payment.sol";
+import {EIP712} from "../EIP712.sol";
 
-contract Blueprint is EIP712,Payment {
+contract Blueprint is EIP712 {
     enum Status {
         Init,
         Issued,
@@ -66,13 +65,6 @@ contract Blueprint is EIP712,Payment {
     // worker public key
     mapping(address => bytes) private workersPublicKey;
 
-    // NFT token id mapping, one NFT token id can only be used once
-    mapping(uint256 => bool) private nftTokenIdMap;
-
-    address public NFTContractAddress;
-
-    address public CrestalTokenAddress;
-
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);
     event RequestProposal(
         bytes32 indexed projectID,
@@ -114,8 +106,6 @@ contract Blueprint is EIP712,Payment {
     event UpdateDeploymentConfig(
         bytes32 indexed projectID, bytes32 indexed requestID, address workerAddress, string base64Config
     );
-
-    event CreateAgent(bytes32 indexed projectID, bytes32 indexed requestID, address walletAddress, uint256 nftTokenId,uint256 amount);
 
     modifier newProject(bytes32 projectId) {
         // check project id
@@ -551,57 +541,6 @@ contract Blueprint is EIP712,Payment {
         requestID = createCommonProjectIDAndDeploymentRequest(
             msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL
         );
-    }
-
-    function createAgentWithNFT(
-        bytes32 projectId,
-        string memory base64Proposal,
-        address privateWorkerAddress,
-        string memory serverURL,
-        uint256 tokenId
-    ) public returns (bytes32 requestID) {
-
-        // check NFT token id is already used or not
-        require(nftTokenIdMap[tokenId] == false, "NFT token id already used");
-
-        // check NFT ownership
-        require(checkNFTOwnership(NFTContractAddress, tokenId, msg.sender), "NFT token not owned by user");
-
-        requestID = createCommonProjectIDAndDeploymentRequest(
-            msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL
-        );
-
-        // emit create agent event
-        emit CreateAgent(projectId, requestID, msg.sender, tokenId, 0);
-    }
-
-    function createAgentWithSigWithNFT(
-        bytes32 projectId,
-        string memory base64Proposal,
-        address privateWorkerAddress,
-        string memory serverURL,
-        bytes memory signature,
-        uint256 tokenId
-    ) public returns (bytes32 requestID) {
-
-        // check NFT token id is already used or not
-        require(nftTokenIdMap[tokenId] == false, "NFT token id already used");
-
-        // get EIP712 hash digest
-        bytes32 digest = getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
-
-        // get signer address
-        address signerAddr = getSignerAddress(digest, signature);
-
-        // check NFT ownership
-        require(checkNFTOwnership(NFTContractAddress, tokenId, signerAddr), "NFT token not owned by user");
-
-        requestID = createCommonProjectIDAndDeploymentRequest(
-            signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL
-        );
-
-        // emit create agent event
-        emit CreateAgent(projectId, requestID, signerAddr, tokenId, 0);
     }
 
     function createProjectIDAndPrivateDeploymentRequestWithSig(

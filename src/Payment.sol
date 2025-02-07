@@ -1,51 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/interfaces/IERC721.sol";
 
-contract Payment {
-    IERC721 public nftToken;
-    IERC20 public crestalToken;
+contract Payment  {
 
-//    uint256 public erc20Amount;
-////    ////    mapping(uint256 => bool) public usedNfts;    mapping(address => mapping(bytes32 => bool)) public paymentStatus;mapping(uint256 => bool) public usedNfts;    mapping(address => mapping(bytes32 => bool)) public paymentStatus;
-//
-    function __Payment_initialize(address crestalTokenAddress, address nftTokenAddress) public {
-        nftToken = IERC721(nftTokenAddress);
-        crestalToken = IERC20(crestalTokenAddress);
+    function checkNFTOwnership(address nftTokenAddress, uint256 nftId, address userAddress) public view returns (bool) {
+        IERC721 nftToken =  IERC721(nftTokenAddress);
+        return nftToken.ownerOf(nftId) == userAddress;
     }
 
-    event PaymentReceived(address indexed user, uint256 amount, string paymentType);
-    event DeploymentRequested(address indexed user, bytes32 projectId);
+    function payWithERC20(address erc20TokenAddress, uint256 amount, address userAddress , address toAddress) external {
+        IERC20 token = IERC20(erc20TokenAddress);
 
+        // check if user has enough balance
+        require(token.balanceOf(userAddress) >= amount, "Insufficient balance");
 
-//    function setErc20Amount(uint256 _erc20Amount) external onlyOwner {
-//        erc20Amount = _erc20Amount;
-//    }
+        require(token.transferFrom(userAddress, toAddress, amount), "ERC20 transfer failed");
 
-    function payWithNft(bytes32 projectId, uint256 nftId) external {
-        require(nftToken.ownerOf(nftId) == msg.sender, "Not the owner of the NFT");
-//        require(!usedNfts[nftId], "NFT already used");
-//        usedNfts[nftId] = true;
-//        paymentStatus[msg.sender][projectId] = true;
-        emit PaymentReceived(msg.sender, nftId, "NFT");
-
-        emit DeploymentRequested(msg.sender, projectId);
     }
-
-    function payWithErc20(bytes32 projectId, string memory base64Proposal, string memory serverURL) external {
-        require(crestalToken.transferFrom(msg.sender, address(this), 20), "ERC20 transfer failed");
-//        paymentStatus[msg.sender][projectId] = true;
-//        emit PaymentReceived(msg.sender, erc20Amount, "ERC20");
-
-        emit DeploymentRequested(msg.sender, projectId);
-    }
-
-//    function checkPaymentStatus(address user, bytes32 projectId) external view returns (bool) {
-//        return paymentStatus[user][projectId];
-//    }
 
 }
