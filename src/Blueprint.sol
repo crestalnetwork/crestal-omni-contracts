@@ -5,7 +5,7 @@ pragma solidity ^0.8.26;
 import {EIP712} from "./EIP712.sol";
 import {Payment} from "./Payment.sol";
 
-contract Blueprint is EIP712,Payment {
+contract Blueprint is EIP712, Payment {
     enum Status {
         Init,
         Issued,
@@ -115,7 +115,9 @@ contract Blueprint is EIP712,Payment {
         bytes32 indexed projectID, bytes32 indexed requestID, address workerAddress, string base64Config
     );
 
-    event CreateAgent(bytes32 indexed projectID, bytes32 indexed requestID, address walletAddress, uint256 nftTokenId,uint256 amount);
+    event CreateAgent(
+        bytes32 indexed projectID, bytes32 indexed requestID, address walletAddress, uint256 nftTokenId, uint256 amount
+    );
 
     modifier newProject(bytes32 projectId) {
         // check project id
@@ -560,7 +562,6 @@ contract Blueprint is EIP712,Payment {
         string memory serverURL,
         uint256 tokenId
     ) public returns (bytes32 requestID) {
-
         // check NFT token id is already used or not
         require(nftTokenIdMap[tokenId] == false, "NFT token id already used");
 
@@ -583,7 +584,6 @@ contract Blueprint is EIP712,Payment {
         bytes memory signature,
         uint256 tokenId
     ) public returns (bytes32 requestID) {
-
         // check NFT token id is already used or not
         require(nftTokenIdMap[tokenId] == false, "NFT token id already used");
 
