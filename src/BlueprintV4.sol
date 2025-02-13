@@ -34,6 +34,11 @@ contract BlueprintV4 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Blue
         }
     }
 
+    function resetAgentCreationStatus(address userAddress, uint256 tokenId) public onlyOwner {
+        WhitelistUsers[userAddress] = Status.Issued;
+        nftTokenIdMap[tokenId] = Status.Init;
+    }
+
     // The _authorizeUpgrade function is required by the UUPSUpgradeable contract
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }

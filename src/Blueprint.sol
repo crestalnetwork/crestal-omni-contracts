@@ -75,6 +75,9 @@ contract Blueprint is EIP712, Payment {
     // whitelist user can create an agent
     mapping(address => Status) public WhitelistUsers;
 
+    // deployment owner
+    mapping(bytes32 => address) private deploymentOwner;
+
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);
     event RequestProposal(
         bytes32 indexed projectID,
@@ -557,6 +560,34 @@ contract Blueprint is EIP712, Payment {
         );
     }
 
+    function createAgent(
+        address userAddress,
+        bytes32 projectId,
+        string memory base64Proposal,
+        address privateWorkerAddress,
+        string memory serverURL,
+        uint256 tokenId
+    ) internal returns (bytes32 requestID) {
+        // check NFT token id is already used or not
+        require(nftTokenIdMap[tokenId] != Status.Pickup, "NFT token id already used");
+
+        // check NFT ownership
+        require(checkNFTOwnership(NFTContractAddress, tokenId, userAddress), "NFT token not owned by user");
+
+        requestID = createCommonProjectIDAndDeploymentRequest(
+            userAddress, projectId, base64Proposal, privateWorkerAddress, serverURL
+        );
+
+        // update NFT token id status
+        nftTokenIdMap[tokenId] = Status.Pickup;
+
+        // set deployment owner
+        deploymentOwner[requestID] = userAddress;
+
+        // emit create agent event
+        emit CreateAgent(projectId, requestID, userAddress, tokenId, 0);
+    }
+
     function createAgentWithNFT(
         bytes32 projectId,
         string memory base64Proposal,
@@ -564,27 +595,15 @@ contract Blueprint is EIP712, Payment {
         string memory serverURL,
         uint256 tokenId
     ) public returns (bytes32 requestID) {
-        // check NFT token id is already used or not
-        require(nftTokenIdMap[tokenId] != Status.Pickup, "NFT token id already used");
-
-        // check NFT ownership
-        require(checkNFTOwnership(NFTContractAddress, tokenId, msg.sender), "NFT token not owned by user");
-
-        requestID = createCommonProjectIDAndDeploymentRequest(
-            msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL
-        );
-
-        // update NFT token id status
-        nftTokenIdMap[tokenId] = Status.Pickup;
-        // emit create agent event
-        emit CreateAgent(projectId, requestID, msg.sender, tokenId, 0);
+        requestID = createAgent(msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId);
     }
 
     function createAgentWithWhitelistUsers(
         bytes32 projectId,
         string memory base64Proposal,
         address privateWorkerAddress,
-        string memory serverURL
+        string memory serverURL,
+        uint256 tokenId
     ) public returns (bytes32 requestID) {
         // check whitelist user
         require(WhitelistUsers[msg.sender] != Status.Init, "User is not in whitelist");
@@ -592,13 +611,34 @@ contract Blueprint is EIP712, Payment {
         // one whitelist user can only create one agent
         require(WhitelistUsers[msg.sender] != Status.Pickup, "User already created agent");
 
-        requestID = createCommonProjectIDAndDeploymentRequest(
-            msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL
-        );
+        requestID = createAgent(msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId);
 
         WhitelistUsers[msg.sender] = Status.Pickup;
-        // emit create agent event
-        emit CreateAgent(projectId, requestID, msg.sender, 0, 0);
+    }
+
+    function createAgentWithWhitelistUsersWithSig(
+        bytes32 projectId,
+        string memory base64Proposal,
+        address privateWorkerAddress,
+        string memory serverURL,
+        uint256 tokenId,
+        bytes memory signature
+    ) public returns (bytes32 requestID) {
+        // get EIP712 hash digest
+        bytes32 digest = getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
+
+        // get signer address
+        address signerAddr = getSignerAddress(digest, signature);
+
+        // check whitelist user
+        require(WhitelistUsers[signerAddr] != Status.Init, "User is not in whitelist");
+
+        // one whitelist user can only create one agent
+        require(WhitelistUsers[signerAddr] != Status.Pickup, "User already created agent");
+
+        requestID = createAgent(signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId);
+
+        WhitelistUsers[signerAddr] = Status.Pickup;
     }
 
     function createAgentWithSigWithNFT(
@@ -609,26 +649,13 @@ contract Blueprint is EIP712, Payment {
         bytes memory signature,
         uint256 tokenId
     ) public returns (bytes32 requestID) {
-        // check NFT token id is already used or not
-        require(nftTokenIdMap[tokenId] != Status.Pickup, "NFT token id already used");
-
         // get EIP712 hash digest
         bytes32 digest = getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
 
         // get signer address
         address signerAddr = getSignerAddress(digest, signature);
 
-        // check NFT ownership
-        require(checkNFTOwnership(NFTContractAddress, tokenId, signerAddr), "NFT token not owned by user");
-
-        requestID = createCommonProjectIDAndDeploymentRequest(
-            signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL
-        );
-
-        // update NFT token id status
-        nftTokenIdMap[tokenId] = Status.Pickup;
-        // emit create agent event
-        emit CreateAgent(projectId, requestID, signerAddr, tokenId, 0);
+        requestID = createAgent(signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId);
     }
 
     function createProjectIDAndPrivateDeploymentRequestWithSig(
@@ -707,13 +734,18 @@ contract Blueprint is EIP712, Payment {
         emit AcceptDeployment(projectId, requestID, requestDeploymentStatus[requestID].deployWorkerAddr);
     }
 
-    function updateWorkerDeploymentConfig(bytes32 projectId, bytes32 requestID, string memory updatedBase64Config)
-        public
-        hasProject(projectId)
-    {
+    function updateWorkerDeploymentConfigCommon(
+        address userAddress,
+        bytes32 projectId,
+        bytes32 requestID,
+        string memory updatedBase64Config
+    ) internal hasProject(projectId) {
         require(requestDeploymentStatus[requestID].status != Status.Init, "requestID does not exist");
         require(bytes(updatedBase64Config).length > 0, "updatedBase64Config is empty");
         require(requestDeploymentStatus[requestID].status != Status.Issued, "requestID is not picked up by any worker");
+
+        // check if it owner of requestID
+        require(deploymentOwner[requestID] == userAddress, "only deployment owner can update config");
 
         // reset status if it is generated proof
         if (requestDeploymentStatus[requestID].status == Status.GeneratedProof) {
@@ -723,6 +755,27 @@ contract Blueprint is EIP712, Payment {
         emit UpdateDeploymentConfig(
             projectId, requestID, requestDeploymentStatus[requestID].deployWorkerAddr, updatedBase64Config
         );
+    }
+
+    function updateWorkerDeploymentConfig(bytes32 projectId, bytes32 requestID, string memory updatedBase64Config)
+        public
+    {
+        updateWorkerDeploymentConfigCommon(msg.sender, projectId, requestID, updatedBase64Config);
+    }
+
+    function updateWorkerDeploymentConfigWithSig(
+        bytes32 projectId,
+        bytes32 requestID,
+        string memory updatedBase64Config,
+        bytes memory signature
+    ) public {
+        // get EIP712 hash digest
+        bytes32 digest = getRequestDeploymentDigest(projectId, "", "");
+
+        // get signer address
+        address signerAddr = getSignerAddress(digest, signature);
+
+        updateWorkerDeploymentConfigCommon(signerAddr, projectId, requestID, updatedBase64Config);
     }
 
     // set worker public key
