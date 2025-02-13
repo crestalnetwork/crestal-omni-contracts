@@ -716,9 +716,9 @@ contract Blueprint is EIP712, Payment {
         require(requestDeploymentStatus[requestID].status != Status.Issued, "requestID is not picked up by any worker");
 
         // reset status if it is generated proof
-//        if (requestDeploymentStatus[requestID].status == Status.GeneratedProof) {
-//            requestDeploymentStatus[requestID].status = Status.Pickup;
-//        }
+        if (requestDeploymentStatus[requestID].status == Status.GeneratedProof) {
+            requestDeploymentStatus[requestID].status = Status.Pickup;
+        }
 
         emit UpdateDeploymentConfig(
             projectId, requestID, requestDeploymentStatus[requestID].deployWorkerAddr, updatedBase64Config
