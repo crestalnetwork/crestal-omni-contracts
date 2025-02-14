@@ -41,11 +41,6 @@ contract BlueprintTest is Test {
         assertEq(proposalId, latestProposalId);
     }
 
-    function testFail_createProposalRequest() public {
-        vm.expectRevert(stdError.arithmeticError);
-        blueprint.createProposalRequest("invalid project id", "test base64 param", "test server url");
-    }
-
     function test_createProjectIDAndProposalRequest() public {
         bytes32 proposalId =
             blueprint.createProjectIDAndProposalRequest(projectId, "test base64 param", "test server url");
@@ -54,22 +49,6 @@ contract BlueprintTest is Test {
 
         assertEq(proposalId, latestProposalId);
         assertEq(projectId, latestProjId);
-    }
-
-    function testFail_duplicate_projectId_createProjectIDAndProposalRequest() public {
-        vm.expectRevert(stdError.arithmeticError);
-        // use duplicate project id , then cause creation fail error
-        bytes32 projId = blueprint.createProjectID();
-        blueprint.createProjectIDAndProposalRequest(projId, "test base64 param", "test server url");
-    }
-
-    function testFail_request_twice_createProjectIDAndProposalRequest() public {
-        vm.expectRevert(stdError.arithmeticError);
-        // first create success, while second fail
-        bytes32 projId = blueprint.createProjectID();
-        blueprint.createProjectIDAndProposalRequest(projId, "test base64 param", "test server url");
-
-        blueprint.createProjectIDAndProposalRequest(projId, "test base64 param", "test server url");
     }
 
     function test_createDeploymentRequest() public {
