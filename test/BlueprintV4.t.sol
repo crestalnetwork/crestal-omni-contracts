@@ -80,6 +80,12 @@ contract BlueprintTest is Test {
         // Try to use the same address again, should revert
         vm.expectRevert("user already created agent");
         blueprint.createAgentWithWhitelistUsers(projectId, "base64Proposal", workerAddress, "url", validTokenId);
+
+        //after reset agent status should be ok to create again
+        blueprint.resetAgentCreationStatus(address(this), validTokenId);
+        projectId = bytes32(0x2723a34e38d0f0aa09ce626f00aa23c0464b52c75516cf3203cc4c9afeaf2981);
+        // Create agent with NFT
+        blueprint.createAgentWithWhitelistUsers(projectId, "base64Proposal", workerAddress, "url", validTokenId);
     }
 
     function test_createAgentWithWhitelistUsersWithSig() public {
