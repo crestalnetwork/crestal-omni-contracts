@@ -606,10 +606,10 @@ contract Blueprint is EIP712, Payment {
         uint256 tokenId
     ) public returns (bytes32 requestID) {
         // check whitelist user
-        require(WhitelistUsers[msg.sender] != Status.Init, "User is not in whitelist");
+        require(WhitelistUsers[msg.sender] != Status.Init, "user is not in whitelist");
 
         // one whitelist user can only create one agent
-        require(WhitelistUsers[msg.sender] != Status.Pickup, "User already created agent");
+        require(WhitelistUsers[msg.sender] != Status.Pickup, "user already created agent");
 
         requestID = createAgent(msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId);
 
@@ -631,10 +631,10 @@ contract Blueprint is EIP712, Payment {
         address signerAddr = getSignerAddress(digest, signature);
 
         // check whitelist user
-        require(WhitelistUsers[signerAddr] != Status.Init, "User is not in whitelist");
+        require(WhitelistUsers[signerAddr] != Status.Init, "user is not in whitelist");
 
         // one whitelist user can only create one agent
-        require(WhitelistUsers[signerAddr] != Status.Pickup, "User already created agent");
+        require(WhitelistUsers[signerAddr] != Status.Pickup, "user already created agent");
 
         requestID = createAgent(signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId);
 
