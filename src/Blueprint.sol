@@ -836,4 +836,8 @@ contract Blueprint is EIP712, Payment {
     function getEIP712ContractAddress() public view returns (address) {
         return getAddress();
     }
+
+    function isWhitelistUser(address userAddress) public view returns (bool) {
+        return WhitelistUsers[userAddress] == Status.Issued;
+    }
 }

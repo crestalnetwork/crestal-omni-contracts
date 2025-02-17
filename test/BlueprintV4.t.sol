@@ -74,6 +74,9 @@ contract BlueprintTest is Test {
         whitelistAddresses[0] = address(this);
         blueprint.setWhitelistAddress(whitelistAddresses);
 
+        // check it is whitelistAddresses
+        assertTrue(blueprint.isWhitelistUser(address(this)), "user is not in whitelist");
+
         // Create agent with NFT
         blueprint.createAgentWithWhitelistUsers(projectId, "base64Proposal", workerAddress, "url", validTokenId);
 
