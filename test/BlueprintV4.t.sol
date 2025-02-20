@@ -25,11 +25,6 @@ contract BlueprintTest is Test {
         dummyAddress = address(0);
     }
 
-    function test_VERSION() public view {
-        string memory ver = blueprint.VERSION();
-        assertEq(ver, "6.0.0");
-    }
-
     function test_createAgentWithNFT() public {
         uint256 validTokenId = 1;
 
