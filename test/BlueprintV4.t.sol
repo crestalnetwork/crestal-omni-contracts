@@ -27,7 +27,7 @@ contract BlueprintTest is Test {
 
     function test_VERSION() public view {
         string memory ver = blueprint.VERSION();
-        assertEq(ver, "4.0.0");
+        assertEq(ver, "6.0.0");
     }
 
     function test_createAgentWithNFT() public {
@@ -89,6 +89,9 @@ contract BlueprintTest is Test {
         projectId = bytes32(0x2723a34e38d0f0aa09ce626f00aa23c0464b52c75516cf3203cc4c9afeaf2981);
         // Create agent with NFT
         blueprint.createAgentWithWhitelistUsers(projectId, "base64Proposal", workerAddress, "url", validTokenId);
+
+        // after creation, user still in whitelist
+        assertTrue(blueprint.isWhitelistUser(address(this)), "user is not in whitelist");
     }
 
     function test_createAgentWithWhitelistUsersWithSig() public {
