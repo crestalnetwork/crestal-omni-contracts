@@ -61,7 +61,7 @@ contract BlueprintTest is Test {
         mockNFT.mint(address(this), validTokenId);
 
         // before whitelist, should give not whitelist error
-        vm.expectRevert("user is not in whitelist");
+        vm.expectRevert("User is not in whitelist");
         blueprint.createAgentWithWhitelistUsers(projectId, "base64Proposal", workerAddress, "url", validTokenId);
 
         // Add the test contract to the whitelist
@@ -70,13 +70,13 @@ contract BlueprintTest is Test {
         blueprint.setWhitelistAddress(whitelistAddresses);
 
         // check it is whitelistAddresses
-        assertTrue(blueprint.isWhitelistUser(address(this)), "user is not in whitelist");
+        assertTrue(blueprint.isWhitelistUser(address(this)), "User is not in whitelist");
 
         // Create agent with NFT
         blueprint.createAgentWithWhitelistUsers(projectId, "base64Proposal", workerAddress, "url", validTokenId);
 
         // Try to use the same address again, should revert
-        vm.expectRevert("user already created agent");
+        vm.expectRevert("User already created agent");
         blueprint.createAgentWithWhitelistUsers(projectId, "base64Proposal", workerAddress, "url", validTokenId);
 
         //after reset agent status should be ok to create again
@@ -86,7 +86,7 @@ contract BlueprintTest is Test {
         blueprint.createAgentWithWhitelistUsers(projectId, "base64Proposal", workerAddress, "url", validTokenId);
 
         // after creation, user still in whitelist
-        assertTrue(blueprint.isWhitelistUser(address(this)), "user is not in whitelist");
+        assertTrue(blueprint.isWhitelistUser(address(this)), "User is not in whitelist");
     }
 
     function test_createAgentWithWhitelistUsersWithSig() public {
@@ -116,7 +116,7 @@ contract BlueprintTest is Test {
         );
 
         // check whitelist address status
-        assertTrue(blueprint.WhitelistUsers(signerAddress) == Blueprint.Status.Pickup);
+        assertTrue(blueprint.whitelistUsers(signerAddress) == Blueprint.Status.Pickup);
     }
 
     function generateSignature(bytes32 _projectId, string memory _base64Proposal, string memory _serverURL)

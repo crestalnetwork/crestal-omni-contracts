@@ -10,35 +10,37 @@ import "./Blueprint.sol";
 contract BlueprintV4 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Blueprint {
     string public constant SIGNING_DOMAIN = "app.crestal.network";
     // no hand nation pass NFT contract address
-    address public constant NFT_Contract_Address = address(0x7D8be0Dd8915E3511fFDDABDD631812be824f578);
+    address public constant NFT_CONTRACT_ADDRESS = address(0x7D8be0Dd8915E3511fFDDABDD631812be824f578);
 
     function initialize() public reinitializer(4) {
         __Ownable_init(msg.sender);
         VERSION = "4.0.0";
         __EIP712_init(SIGNING_DOMAIN, VERSION);
         __UUPSUpgradeable_init();
-        NFTContractAddress = NFT_Contract_Address;
+        nftContractAddress = NFT_CONTRACT_ADDRESS;
     }
 
     function setNFTContractAddress(address _nftContractAddress) public onlyOwner {
-        NFTContractAddress = _nftContractAddress;
-    }
-
-    function setCrestalTokenAddress(address _crestalTokenAddress) public onlyOwner {
-        CrestalTokenAddress = _crestalTokenAddress;
+        nftContractAddress = _nftContractAddress;
     }
 
     function setWhitelistAddress(address[] calldata _whitelistAddress) public onlyOwner {
         for (uint256 i = 0; i < _whitelistAddress.length; i++) {
-            WhitelistUsers[_whitelistAddress[i]] = Status.Issued;
+            whitelistUsers[_whitelistAddress[i]] = Status.Issued;
         }
     }
 
     function resetAgentCreationStatus(address userAddress, uint256 tokenId) public onlyOwner {
-        WhitelistUsers[userAddress] = Status.Issued;
+        whitelistUsers[userAddress] = Status.Issued;
         nftTokenIdMap[tokenId] = Status.Init;
     }
 
+    function removeWhitelistAddress(address[] calldata _removedAddress) public onlyOwner {
+        for (uint256 i = 0; i < _removedAddress.length; i++) {
+            delete whitelistUsers[_removedAddress[i]];
+        }
+    }
     // The _authorizeUpgrade function is required by the UUPSUpgradeable contract
+
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 }
