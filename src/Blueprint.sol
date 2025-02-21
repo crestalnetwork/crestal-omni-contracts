@@ -771,7 +771,7 @@ contract Blueprint is EIP712, Payment {
         bytes memory signature
     ) public {
         // get EIP712 hash digest
-        bytes32 digest = getRequestDeploymentDigest(projectId, "", "");
+        bytes32 digest = getRequestDeploymentDigest(projectId, updatedBase64Config, "app.crestal.network");
 
         // get signer address
         address signerAddr = getSignerAddress(digest, signature);
