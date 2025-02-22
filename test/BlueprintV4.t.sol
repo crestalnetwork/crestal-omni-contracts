@@ -3,7 +3,7 @@ pragma solidity ^0.8.26;
 import {Test, console} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {BlueprintV4} from "../src/BlueprintV4.sol";
-import {Blueprint} from "../src/Blueprint.sol";
+import {BlueprintCore} from "../src/BlueprintCore.sol";
 import {stdError} from "forge-std/StdError.sol";
 import {MockERC721} from "./MockERC721.sol";
 
@@ -37,7 +37,7 @@ contract BlueprintTest is Test {
 
         // Expect the createAgent event
         vm.expectEmit(true, false, true, true);
-        emit Blueprint.CreateAgent(projectId, "fake", address(this), validTokenId, 0);
+        emit BlueprintCore.CreateAgent(projectId, "fake", address(this), validTokenId, 0);
 
         blueprint.createAgentWithNFT(projectId, "base64Proposal", workerAddress, "url", validTokenId);
 
@@ -108,7 +108,7 @@ contract BlueprintTest is Test {
 
         // Expect the createAgent event
         vm.expectEmit(true, false, true, true);
-        emit Blueprint.CreateAgent(projectId, "fake", signerAddress, validTokenId, 0);
+        emit BlueprintCore.CreateAgent(projectId, "fake", signerAddress, validTokenId, 0);
 
         // Create agent with createAgentWithWhitelistUsersWithSig
         blueprint.createAgentWithWhitelistUsersWithSig(
@@ -116,7 +116,7 @@ contract BlueprintTest is Test {
         );
 
         // check whitelist address status
-        assertTrue(blueprint.whitelistUsers(signerAddress) == Blueprint.Status.Pickup);
+        assertTrue(blueprint.whitelistUsers(signerAddress) == BlueprintCore.Status.Pickup);
     }
 
     function generateSignature(bytes32 _projectId, string memory _base64Proposal, string memory _serverURL)
