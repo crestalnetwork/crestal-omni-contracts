@@ -5,9 +5,9 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
-import "./Blueprint.sol";
+import "./BlueprintCore.sol";
 
-contract BlueprintV4 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Blueprint {
+contract BlueprintV4 is Initializable, UUPSUpgradeable, OwnableUpgradeable, BlueprintCore {
     string public constant SIGNING_DOMAIN = "app.crestal.network";
     // no hand nation pass NFT contract address
     address public constant NFT_CONTRACT_ADDRESS = address(0x7D8be0Dd8915E3511fFDDABDD631812be824f578);
@@ -20,26 +20,6 @@ contract BlueprintV4 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Blue
         nftContractAddress = NFT_CONTRACT_ADDRESS;
     }
 
-    function setNFTContractAddress(address _nftContractAddress) public onlyOwner {
-        nftContractAddress = _nftContractAddress;
-    }
-
-    function setWhitelistAddress(address[] calldata _whitelistAddress) public onlyOwner {
-        for (uint256 i = 0; i < _whitelistAddress.length; i++) {
-            whitelistUsers[_whitelistAddress[i]] = Status.Issued;
-        }
-    }
-
-    function resetAgentCreationStatus(address userAddress, uint256 tokenId) public onlyOwner {
-        whitelistUsers[userAddress] = Status.Issued;
-        nftTokenIdMap[tokenId] = Status.Init;
-    }
-
-    function removeWhitelistAddress(address[] calldata _removedAddress) public onlyOwner {
-        for (uint256 i = 0; i < _removedAddress.length; i++) {
-            delete whitelistUsers[_removedAddress[i]];
-        }
-    }
     // The _authorizeUpgrade function is required by the UUPSUpgradeable contract
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}

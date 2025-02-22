@@ -67,7 +67,7 @@ contract BlueprintTest is Test {
         // Add the test contract to the whitelist
         address[] memory whitelistAddresses = new address[](1);
         whitelistAddresses[0] = address(this);
-        blueprint.setWhitelistAddress(whitelistAddresses);
+        blueprint.setWhitelistAddresses(whitelistAddresses);
 
         // check it is whitelistAddresses
         assertTrue(blueprint.isWhitelistUser(address(this)), "User is not in whitelist");
@@ -104,7 +104,7 @@ contract BlueprintTest is Test {
         // Add the test contract to the whitelist
         address[] memory whitelistAddresses = new address[](1);
         whitelistAddresses[0] = signerAddress;
-        blueprint.setWhitelistAddress(whitelistAddresses);
+        blueprint.setWhitelistAddresses(whitelistAddresses);
 
         // Expect the createAgent event
         vm.expectEmit(true, false, true, true);
