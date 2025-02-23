@@ -119,6 +119,26 @@ contract BlueprintTest is Test {
         assertTrue(blueprint.whitelistUsers(signerAddress) == BlueprintCore.Status.Pickup);
     }
 
+    function test_getWorkerAddresses() public {
+        // Case 1: One worker
+        bytes memory publicKey1 = hex"123456";
+        blueprint.setWorkerPublicKey(publicKey1);
+
+        address[] memory workerAddresses = blueprint.getWorkerAddresses();
+        assertEq(workerAddresses.length, 1);
+        assertEq(workerAddresses[0], address(this));
+
+        // Case 2: Two workers
+        bytes memory publicKey2 = hex"abcdef";
+        vm.prank(dummyAddress);
+        blueprint.setWorkerPublicKey(publicKey2);
+
+        workerAddresses = blueprint.getWorkerAddresses();
+        assertEq(workerAddresses.length, 2);
+        assertEq(workerAddresses[0], address(this));
+        assertEq(workerAddresses[1], dummyAddress);
+    }
+
     function generateSignature(bytes32 _projectId, string memory _base64Proposal, string memory _serverURL)
         internal
         returns (bytes memory, address)

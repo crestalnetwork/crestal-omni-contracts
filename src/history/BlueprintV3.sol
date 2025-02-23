@@ -61,11 +61,9 @@ contract Blueprint is EIP712 {
     mapping(bytes32 => bytes32[]) public deploymentIdList;
 
     // List of worker addresses
-    address[30] private workerAddresses;
+    address[] private workerAddresses;
     // worker public key
     mapping(address => bytes) private workersPublicKey;
-
-    uint256 public workerIndex;
 
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);
     event RequestProposal(
@@ -641,11 +639,8 @@ contract Blueprint is EIP712 {
 
     // set worker public key
     function setWorkerPublicKey(bytes calldata publicKey) public {
-        require(workerIndex < 30, "worker list is full");
-
         if (workersPublicKey[msg.sender].length == 0) {
-            workerAddresses[workerIndex] = msg.sender;
-            workerIndex++;
+            workerAddresses.push(msg.sender);
         }
 
         workersPublicKey[msg.sender] = publicKey;
@@ -657,7 +652,7 @@ contract Blueprint is EIP712 {
     }
 
     // get list of worker addresses
-    function getWorkerAddresses() public view returns (address[30] memory) {
+    function getWorkerAddresses() public view returns (address[] memory) {
         return workerAddresses;
     }
 

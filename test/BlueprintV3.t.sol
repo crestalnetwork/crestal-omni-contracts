@@ -41,8 +41,8 @@ contract BlueprintTest is Test {
         bytes memory publicKey1 = hex"123456";
         blueprint.setWorkerPublicKey(publicKey1);
 
-        address[30] memory workerAddresses = blueprint.getWorkerAddresses();
-        assertEq(workerAddresses.length, 30);
+        address[] memory workerAddresses = blueprint.getWorkerAddresses();
+        assertEq(workerAddresses.length, 1);
         assertEq(workerAddresses[0], address(this));
 
         // Case 2: Two workers
@@ -51,7 +51,7 @@ contract BlueprintTest is Test {
         blueprint.setWorkerPublicKey(publicKey2);
 
         workerAddresses = blueprint.getWorkerAddresses();
-        assertEq(workerAddresses.length, 30);
+        assertEq(workerAddresses.length, 2);
         assertEq(workerAddresses[0], address(this));
         assertEq(workerAddresses[1], dummyAddress);
     }

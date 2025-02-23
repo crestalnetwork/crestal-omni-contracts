@@ -62,11 +62,14 @@ contract BlueprintCore is EIP712, Payment {
     mapping(bytes32 => bytes32[]) public deploymentIdList;
 
     // List of worker addresses
-    address[30] private workerAddresses;
+    address[] private workerAddresses;
     // worker public key
     mapping(address => bytes) private workersPublicKey;
 
-    uint256 public workerIndex;
+    // worker address mapping
+    mapping(string => address[]) private workerAddressesMp;
+
+    string private constant workerAddressKey = "worker_address_key";
 
     // NFT token id mapping, one NFT token id can only be used once
     mapping(uint256 => Status) public nftTokenIdMap;
@@ -781,11 +784,8 @@ contract BlueprintCore is EIP712, Payment {
 
     // set worker public key
     function setWorkerPublicKey(bytes calldata publicKey) public {
-        require(workerIndex < 30, "worker list is full");
-
         if (workersPublicKey[msg.sender].length == 0) {
-            workerAddresses[workerIndex] = msg.sender;
-            workerIndex++;
+            workerAddressesMp[workerAddressKey].push(msg.sender);
         }
 
         workersPublicKey[msg.sender] = publicKey;
@@ -797,8 +797,8 @@ contract BlueprintCore is EIP712, Payment {
     }
 
     // get list of worker addresses
-    function getWorkerAddresses() public view returns (address[30] memory) {
-        return workerAddresses;
+    function getWorkerAddresses() public view returns (address[] memory) {
+        return workerAddressesMp[workerAddressKey];
     }
 
     // get latest deployment status
