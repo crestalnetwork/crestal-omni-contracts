@@ -41,6 +41,13 @@ contract BlueprintTest is Test {
         assertEq(proposalId, latestProposalId);
     }
 
+    function test_Revert_invalid_projectId_createProposalRequest() public {
+        // Expect the transaction to revert with the correct error message
+        vm.expectRevert("projectId does not exist");
+
+        blueprint.createProposalRequest("invalid project id", "test base64 param", "test server url");
+    }
+
     function test_createProjectIDAndProposalRequest() public {
         bytes32 proposalId =
             blueprint.createProjectIDAndProposalRequest(projectId, "test base64 param", "test server url");
@@ -49,6 +56,21 @@ contract BlueprintTest is Test {
 
         assertEq(proposalId, latestProposalId);
         assertEq(projectId, latestProjId);
+    }
+
+    function test_Revert_duplicate_projectId_createProjectIDAndProposalRequest() public {
+        bytes32 projId = blueprint.createProjectID();
+        // use duplicate project id , then cause creation fail error
+        vm.expectRevert("projectId already exists");
+        blueprint.createProjectIDAndProposalRequest(projId, "test base64 param", "test server url");
+    }
+
+    function test_Revert_request_twice_createProjectIDAndProposalRequest() public {
+        // first create success, while second fail
+        blueprint.createProjectIDAndProposalRequest(projectId, "test base64 param", "test server url");
+        vm.expectRevert("projectId already exists");
+
+        blueprint.createProjectIDAndProposalRequest(projectId, "test base64 param", "test server url");
     }
 
     function test_createDeploymentRequest() public {
