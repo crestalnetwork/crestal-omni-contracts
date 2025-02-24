@@ -1,4 +1,4 @@
-.PHONY: abi deploy upgrade check slither mythril
+.PHONY: abi deploy upgrade whitelist check slither mythril
 
 ifdef ENV_FILE
 include $(ENV_FILE)
@@ -16,6 +16,9 @@ deploy:
 
 upgrade:
 	PROXY_ADDRESS=$(PROXY_ADDRESS) forge script ./script/Upgrade$(UPGRADE_TO).s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
+
+whitelist:
+	PROXY_ADDRESS=$(PROXY_ADDRESS) forge script ./script/UpdateWhitelist.s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
 
 check:
 	cast call --rpc-url $(RPC_URL) $(PROXY_ADDRESS) "VERSION()(string)"
