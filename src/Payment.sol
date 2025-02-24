@@ -14,12 +14,12 @@ contract Payment {
         return nftToken.ownerOf(nftId) == userAddress;
     }
 
-    function payWithERC20(address erc20TokenAddress, uint256 amount, address userAddress, address toAddress) external {
+    function payWithERC20(address erc20TokenAddress, uint256 amount, address toAddress) external {
         IERC20 token = IERC20(erc20TokenAddress);
 
         // check if user has enough balance
-        require(token.balanceOf(userAddress) >= amount, "Insufficient balance");
+        require(token.balanceOf(msg.sender) >= amount, "Insufficient balance");
 
-        require(token.transferFrom(userAddress, toAddress, amount), "ERC20 transfer failed");
+        require(token.transferFrom(msg.sender, toAddress, amount), "ERC20 transfer failed");
     }
 }

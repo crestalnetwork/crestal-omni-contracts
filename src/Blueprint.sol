@@ -5,22 +5,24 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./BlueprintCore.sol";
 
 contract Blueprint is OwnableUpgradeable, BlueprintCore {
+    // slither-disable-next-line naming-convention
     function setNFTContractAddress(address _nftContractAddress) public onlyOwner {
+        require(_nftContractAddress != address(0), "NFT Contract is invalid");
         nftContractAddress = _nftContractAddress;
     }
 
-    function setWhitelistAddresses(address[] calldata _whitelistAddress) public onlyOwner {
-        for (uint256 i = 0; i < _whitelistAddress.length; i++) {
-            whitelistUsers[_whitelistAddress[i]] = Status.Issued;
+    function setWhitelistAddresses(address[] calldata whitelistAddress) public onlyOwner {
+        for (uint256 i = 0; i < whitelistAddress.length; i++) {
+            whitelistUsers[whitelistAddress[i]] = Status.Issued;
         }
     }
 
-    function addWhitelistAddress(address _whitelistAddress) public onlyOwner {
-        whitelistUsers[_whitelistAddress] = Status.Issued;
+    function addWhitelistAddress(address whitelistAddress) public onlyOwner {
+        whitelistUsers[whitelistAddress] = Status.Issued;
     }
 
-    function deleteWhitelistAddress(address _whitelistAddress) public onlyOwner {
-        delete whitelistUsers[_whitelistAddress];
+    function deleteWhitelistAddress(address whitelistAddress) public onlyOwner {
+        delete whitelistUsers[whitelistAddress];
     }
 
     function resetAgentCreationStatus(address userAddress, uint256 tokenId) public onlyOwner {
@@ -28,9 +30,10 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
         nftTokenIdMap[tokenId] = Status.Init;
     }
 
-    function removeWhitelistAddresses(address[] calldata _removedAddress) public onlyOwner {
-        for (uint256 i = 0; i < _removedAddress.length; i++) {
-            delete whitelistUsers[_removedAddress[i]];
+    // slither-disable-next-line costly-loop
+    function removeWhitelistAddresses(address[] calldata removedAddress) public onlyOwner {
+        for (uint256 i = 0; i < removedAddress.length; i++) {
+            delete whitelistUsers[removedAddress[i]];
         }
     }
 }
