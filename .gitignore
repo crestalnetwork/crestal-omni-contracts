@@ -18,6 +18,9 @@ node_modules/
 
 # Misc
 *.swp
+.DS_Store
+.deps
+src/artifacts/
 
 # IDE stuffs
 .idea
