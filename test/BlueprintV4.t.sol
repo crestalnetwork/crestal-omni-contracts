@@ -140,7 +140,8 @@ contract BlueprintTest is Test {
     }
 
     function generateSignature(bytes32 _projectId, string memory _base64Proposal, string memory _serverURL)
-        internal view
+        internal
+        view
         returns (bytes memory, address)
     {
         bytes32 digest = blueprint.getRequestDeploymentDigest(_projectId, _base64Proposal, _serverURL);
