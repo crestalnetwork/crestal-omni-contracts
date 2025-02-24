@@ -41,8 +41,10 @@ contract BlueprintTest is Test {
         assertEq(proposalId, latestProposalId);
     }
 
-    function testFail_createProposalRequest() public {
-        vm.expectRevert(stdError.arithmeticError);
+    function test_Revert_invalid_projectId_createProposalRequest() public {
+        // Expect the transaction to revert with the correct error message
+        vm.expectRevert("projectId does not exist");
+
         blueprint.createProposalRequest("invalid project id", "test base64 param", "test server url");
     }
 
@@ -56,20 +58,19 @@ contract BlueprintTest is Test {
         assertEq(projectId, latestProjId);
     }
 
-    function testFail_duplicate_projectId_createProjectIDAndProposalRequest() public {
-        vm.expectRevert(stdError.arithmeticError);
-        // use duplicate project id , then cause creation fail error
+    function test_Revert_duplicate_projectId_createProjectIDAndProposalRequest() public {
         bytes32 projId = blueprint.createProjectID();
+        // use duplicate project id , then cause creation fail error
+        vm.expectRevert("projectId already exists");
         blueprint.createProjectIDAndProposalRequest(projId, "test base64 param", "test server url");
     }
 
-    function testFail_request_twice_createProjectIDAndProposalRequest() public {
-        vm.expectRevert(stdError.arithmeticError);
+    function test_Revert_request_twice_createProjectIDAndProposalRequest() public {
         // first create success, while second fail
-        bytes32 projId = blueprint.createProjectID();
-        blueprint.createProjectIDAndProposalRequest(projId, "test base64 param", "test server url");
+        blueprint.createProjectIDAndProposalRequest(projectId, "test base64 param", "test server url");
+        vm.expectRevert("projectId already exists");
 
-        blueprint.createProjectIDAndProposalRequest(projId, "test base64 param", "test server url");
+        blueprint.createProjectIDAndProposalRequest(projectId, "test base64 param", "test server url");
     }
 
     function test_createDeploymentRequest() public {
