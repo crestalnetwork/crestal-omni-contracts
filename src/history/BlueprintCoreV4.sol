@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.26;
 
-import {EIP712} from "./EIP712.sol";
-import {Payment} from "./Payment.sol";
+import {EIP712} from "../EIP712.sol";
+import {Payment} from "../Payment.sol";
 
 contract BlueprintCore is EIP712, Payment {
     enum Status {
@@ -81,18 +81,6 @@ contract BlueprintCore is EIP712, Payment {
 
     // deployment owner
     mapping(bytes32 => address) private deploymentOwners;
-
-    // payment related variables
-    string public constant PAYMENT_KEY = "payment_key";
-
-    string public constant CREATE_AGENT_OP = "create_agent";
-    string public constant UPDATE_AGENT_OP = "update_agent";
-
-    address public crestalWalletAddress;
-
-    mapping(string => address[]) public paymentAddressesMp;
-
-    mapping(address => mapping(string => int256)) public paymentOpCostMp;
 
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);
     event RequestProposal(
@@ -582,80 +570,26 @@ contract BlueprintCore is EIP712, Payment {
         string memory base64Proposal,
         address privateWorkerAddress,
         string memory serverURL,
-        uint256 tokenId,
-        address tokenAddress
+        uint256 tokenId
     ) internal returns (bytes32 requestID) {
-        if (tokenAddress == address(0) && tokenId == 0) {
-            // create agent with nft
-            // check NFT token id is already used or not
-            require(nftTokenIdMap[tokenId] != Status.Pickup, "NFT token id already used");
+        // check NFT token id is already used or not
+        require(nftTokenIdMap[tokenId] != Status.Pickup, "NFT token id already used");
 
-            // check NFT ownership
-            require(checkNFTOwnership(nftContractAddress, tokenId, userAddress), "NFT token not owned by user");
+        // check NFT ownership
+        require(checkNFTOwnership(nftContractAddress, tokenId, userAddress), "NFT token not owned by user");
 
-            requestID = createCommonProjectIDAndDeploymentRequest(
-                userAddress, projectId, base64Proposal, privateWorkerAddress, serverURL
-            );
+        requestID = createCommonProjectIDAndDeploymentRequest(
+            userAddress, projectId, base64Proposal, privateWorkerAddress, serverURL
+        );
 
-            // update NFT token id status
-            nftTokenIdMap[tokenId] = Status.Pickup;
+        // update NFT token id status
+        nftTokenIdMap[tokenId] = Status.Pickup;
 
-            // set deployment owner
-            deploymentOwners[requestID] = userAddress;
+        // set deployment owner
+        deploymentOwners[requestID] = userAddress;
 
-            // emit create agent event
-            emit CreateAgent(projectId, requestID, userAddress, tokenId, 0);
-        } else {
-            // create agent with token
-            // check token address is valid and in paymentOpCostMp
-            require(paymentOpCostMp[tokenAddress][CREATE_AGENT_OP] != 0, "Token address is invalid");
-            // get cost of create agent operation
-            int256 cost = paymentOpCostMp[tokenAddress][CREATE_AGENT_OP];
-            if (cost > 0) {
-                // payment to crestal wallet address with token
-                payWithERC20(tokenAddress, uint256(cost), userAddress, crestalWalletAddress);
-            } else {
-                // reset negative cost to 0
-                cost = 0;
-            }
-
-            requestID = createCommonProjectIDAndDeploymentRequest(
-                userAddress, projectId, base64Proposal, privateWorkerAddress, serverURL
-            );
-
-            // set deployment owner
-            deploymentOwners[requestID] = userAddress;
-
-            // emit create agent event
-            emit CreateAgent(projectId, requestID, userAddress, tokenId, uint256(cost));
-        }
-    }
-
-    function createAgentWithToken(
-        bytes32 projectId,
-        string memory base64Proposal,
-        address privateWorkerAddress,
-        string memory serverURL,
-        address tokenAddress
-    ) public returns (bytes32 requestID) {
-        requestID = createAgent(msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL, 0, tokenAddress);
-    }
-
-    function createAgentWithTokenWithSig(
-        bytes32 projectId,
-        string memory base64Proposal,
-        address privateWorkerAddress,
-        string memory serverURL,
-        address tokenAddress,
-        bytes memory signature
-    ) public returns (bytes32 requestID) {
-        // get EIP712 hash digest
-        bytes32 digest = getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
-
-        // get signer address
-        address signerAddr = getSignerAddress(digest, signature);
-
-        requestID = createAgent(signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL, 0, tokenAddress);
+        // emit create agent event
+        emit CreateAgent(projectId, requestID, userAddress, tokenId, 0);
     }
 
     function createAgentWithNFT(
@@ -665,8 +599,7 @@ contract BlueprintCore is EIP712, Payment {
         string memory serverURL,
         uint256 tokenId
     ) public returns (bytes32 requestID) {
-        requestID =
-            createAgent(msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId, address(0));
+        requestID = createAgent(msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId);
     }
 
     function createAgentWithWhitelistUsers(
@@ -682,8 +615,7 @@ contract BlueprintCore is EIP712, Payment {
         // one whitelist user can only create one agent
         require(whitelistUsers[msg.sender] != Status.Pickup, "User already created agent");
 
-        requestID =
-            createAgent(msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId, address(0));
+        requestID = createAgent(msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId);
 
         whitelistUsers[msg.sender] = Status.Pickup;
     }
@@ -708,8 +640,7 @@ contract BlueprintCore is EIP712, Payment {
         // one whitelist user can only create one agent
         require(whitelistUsers[signerAddr] != Status.Pickup, "User already created agent");
 
-        requestID =
-            createAgent(signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId, address(0));
+        requestID = createAgent(signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId);
 
         whitelistUsers[signerAddr] = Status.Pickup;
     }
@@ -728,8 +659,7 @@ contract BlueprintCore is EIP712, Payment {
         // get signer address
         address signerAddr = getSignerAddress(digest, signature);
 
-        requestID =
-            createAgent(signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId, address(0));
+        requestID = createAgent(signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId);
     }
 
     function createProjectIDAndPrivateDeploymentRequestWithSig(
@@ -809,7 +739,6 @@ contract BlueprintCore is EIP712, Payment {
     }
 
     function updateWorkerDeploymentConfigCommon(
-        address tokenAddress,
         address userAddress,
         bytes32 projectId,
         bytes32 requestID,
@@ -822,17 +751,6 @@ contract BlueprintCore is EIP712, Payment {
         // check if it owner of requestID
         require(deploymentOwners[requestID] == userAddress, "Only deployment owner can update config");
 
-        // check tokenAddress is valid and must be in paymentOpCostMp
-        require(paymentOpCostMp[tokenAddress][UPDATE_AGENT_OP] != 0, "Invalid token address");
-
-        // get update agent cost
-        int256 cost = paymentOpCostMp[tokenAddress][UPDATE_AGENT_OP];
-
-        if (cost > 0) {
-            // transfer token to crestal wallet
-            payWithERC20(tokenAddress, uint256(cost), userAddress, crestalWalletAddress);
-        }
-
         // reset status if it is generated proof
         if (requestDeploymentStatus[requestID].status == Status.GeneratedProof) {
             requestDeploymentStatus[requestID].status = Status.Pickup;
@@ -843,17 +761,13 @@ contract BlueprintCore is EIP712, Payment {
         );
     }
 
-    function updateWorkerDeploymentConfig(
-        address tokenAddress,
-        bytes32 projectId,
-        bytes32 requestID,
-        string memory updatedBase64Config
-    ) public {
-        updateWorkerDeploymentConfigCommon(tokenAddress, msg.sender, projectId, requestID, updatedBase64Config);
+    function updateWorkerDeploymentConfig(bytes32 projectId, bytes32 requestID, string memory updatedBase64Config)
+        public
+    {
+        updateWorkerDeploymentConfigCommon(msg.sender, projectId, requestID, updatedBase64Config);
     }
 
     function updateWorkerDeploymentConfigWithSig(
-        address tokenAddress,
         bytes32 projectId,
         bytes32 requestID,
         string memory updatedBase64Config,
@@ -865,7 +779,7 @@ contract BlueprintCore is EIP712, Payment {
         // get signer address
         address signerAddr = getSignerAddress(digest, signature);
 
-        updateWorkerDeploymentConfigCommon(tokenAddress, signerAddr, projectId, requestID, updatedBase64Config);
+        updateWorkerDeploymentConfigCommon(signerAddr, projectId, requestID, updatedBase64Config);
     }
 
     // set worker public key
@@ -885,11 +799,6 @@ contract BlueprintCore is EIP712, Payment {
     // get list of worker addresses
     function getWorkerAddresses() public view returns (address[] memory) {
         return workerAddressesMp[WORKER_ADDRESS_KEY];
-    }
-
-    // get list of payment addresses
-    function getPaymentAddresses() public view returns (address[] memory) {
-        return paymentAddressesMp[PAYMENT_KEY];
     }
 
     // get latest deployment status

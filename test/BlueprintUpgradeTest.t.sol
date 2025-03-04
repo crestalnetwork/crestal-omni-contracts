@@ -8,10 +8,13 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {BlueprintV2} from "../src/BlueprintV2.sol";
 import {BlueprintV3} from "../src/BlueprintV3.sol";
 import {BlueprintV4} from "../src/BlueprintV4.sol";
+import {BlueprintV5} from "../src/BlueprintV5.sol";
 
 contract BlueprintTestUpgrade is Test {
     BlueprintV1 public proxy;
     address public solverAddress;
+    bytes32 public projIdV4;
+    bytes32 public projIdV5;
 
     function setUp() public {
         BlueprintV1 blueprint = new BlueprintV1();
@@ -199,12 +202,35 @@ contract BlueprintTestUpgrade is Test {
         assertEq(projIdV3, projId);
 
         // create new deployment
-        bytes32 projIdV4 = bytes32(0x2723a34e38d0f0aa09ce626f00aa23c0464b52c75516cf3203cc4c9afeaf2980);
+        projIdV4 = bytes32(0x2723a34e38d0f0aa09ce626f00aa23c0464b52c75516cf3203cc4c9afeaf2980);
 
         BlueprintV4(address(proxy)).createProjectIDAndDeploymentRequest(projIdV4, "base64", "test server url");
 
         // get latest project id
         bytes32 latestProjId = proxy.getLatestUserProjectID(address(this));
         assertEq(projIdV4, latestProjId);
+    }
+
+    function test_UpdradeV5() public {
+        test_UpgradeV4();
+
+        // upgrade into V5
+        BlueprintV5 blueprintV5 = new BlueprintV5();
+        proxy.upgradeToAndCall(address(blueprintV5), abi.encodeWithSignature("initialize()"));
+        string memory ver = proxy.VERSION();
+        assertEq(ver, "5.0.0");
+
+        // get v4 project id
+        bytes32 latestProjId = proxy.getLatestUserProjectID(address(this));
+        assertEq(projIdV4, latestProjId);
+
+        // create new deployment
+        projIdV5 = bytes32(0x2723a34e38d0f0aa09ce626f00aa23c0464b52c75516cf3203cc4c9afeaf2985);
+
+        BlueprintV5(address(proxy)).createProjectIDAndDeploymentRequest(projIdV5, "base64", "test server url");
+
+        // get latest project id
+        latestProjId = proxy.getLatestUserProjectID(address(this));
+        assertEq(projIdV5, latestProjId);
     }
 }
