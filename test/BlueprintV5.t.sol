@@ -104,7 +104,7 @@ contract BlueprintTest is Test {
         blueprint.setCreateAgentTokenCost(address(mockToken), validTokenAmount);
 
         // not enough balance to create agent
-        vm.expectRevert("Insufficient balance");
+        vm.expectRevert("ERC20: transfer amount exceeds balance");
         blueprint.createAgentWithToken(
             projectId, "test base64 proposal", workerAddress, "http://example.com", address(mockToken)
         );
@@ -192,7 +192,7 @@ contract BlueprintTest is Test {
         blueprint.setUpdateCreateAgentTokenCost(address(mockToken), validTokenAmount);
 
         // not enough balance to create agent
-        vm.expectRevert("Insufficient balance");
+        vm.expectRevert("ERC20: transfer amount exceeds balance");
         //  update agent deployment config
         blueprint.updateWorkerDeploymentConfig(address(mockToken), projectId, requestId, base64Proposal);
 
