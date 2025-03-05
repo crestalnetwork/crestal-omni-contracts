@@ -354,7 +354,6 @@ contract BlueprintCore is EIP712, Payment {
         }
     }
 
-
     function createCommonProjectIDAndDeploymentRequest(
         address userAddress,
         bytes32 projectId,
