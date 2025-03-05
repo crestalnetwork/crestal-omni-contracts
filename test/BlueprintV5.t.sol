@@ -22,7 +22,7 @@ contract BlueprintTest is Test {
         blueprint.addPaymentAddress(address(mockToken));
 
         // set crestal wallet address
-        blueprint.setCrestalWalletAddress(address(0x7D8be0Dd8915E3511fFDDABDD631812be824f578));
+        blueprint.setFeeCollectionWalletAddress(address(0x7D8be0Dd8915E3511fFDDABDD631812be824f578));
 
         projectId = bytes32(0x2723a34e38d0f0aa09ce626f00aa23c0464b52c75516cf3203cc4c9afeaf2980);
         workerAddress = address(0x4d6585D89F889F29f77fd7Dd71864269BA1B31df);

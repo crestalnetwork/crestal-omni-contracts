@@ -15,6 +15,7 @@ contract BlueprintTestUpgrade is Test {
     address public solverAddress;
     bytes32 public projIdV4;
     bytes32 public projIdV5;
+    address public constant NFT_CONTRACT_ADDRESS = address(0x7D8be0Dd8915E3511fFDDABDD631812be824f578);
 
     function setUp() public {
         BlueprintV1 blueprint = new BlueprintV1();
@@ -232,5 +233,7 @@ contract BlueprintTestUpgrade is Test {
         // get latest project id
         latestProjId = proxy.getLatestUserProjectID(address(this));
         assertEq(projIdV5, latestProjId);
+
+        assertEq(BlueprintV5(address(proxy)).NFT_CONTRACT_ADDRESS(), NFT_CONTRACT_ADDRESS);
     }
 }

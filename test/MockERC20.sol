@@ -51,6 +51,16 @@ contract MockERC20 is IERC20 {
         return true;
     }
 
+    function safeTransferFrom(address sender, address recipient, uint256 amount) public returns (bool) {
+        require(_balances[sender] >= amount, "ERC20: transfer amount exceeds balance");
+        require(_allowances[sender][msg.sender] >= amount, "ERC20: transfer amount exceeds allowance");
+        _balances[sender] -= amount;
+        _balances[recipient] += amount;
+        _allowances[sender][msg.sender] -= amount;
+        emit Transfer(sender, recipient, amount);
+        return true;
+    }
+
     function transferFrom(address sender, address recipient, uint256 amount) public override returns (bool) {
         require(_balances[sender] >= amount, "ERC20: transfer amount exceeds balance");
         require(_allowances[sender][msg.sender] >= amount, "ERC20: transfer amount exceeds allowance");

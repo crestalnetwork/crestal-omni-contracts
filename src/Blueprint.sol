@@ -8,7 +8,7 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
     event PaymentAddressAdded(address paymentAddress);
     event CreateAgentTokenCost(address paymentAddress, int256 cost);
     event UpdateAgentTokenCost(address paymentAddress, int256 cost);
-    event CrestalWalletAddress(address crestalWalletAddress);
+    event FeeCollectionWalletAddress(address feeCollectionWalletAddress);
 
     // slither-disable-next-line naming-convention
     function setNFTContractAddress(address _nftContractAddress) public onlyOwner {
@@ -69,10 +69,10 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
         emit UpdateAgentTokenCost(paymentAddress, cost);
     }
 
-    function setCrestalWalletAddress(address _crestalWalletAddress) public onlyOwner {
-        require(_crestalWalletAddress != address(0), "Crestal Wallet Address is invalid");
-        crestalWalletAddress = _crestalWalletAddress;
+    function setFeeCollectionWalletAddress(address _feeCollectionWalletAddress) public onlyOwner {
+        require(_feeCollectionWalletAddress != address(0), "Fee collection Wallet Address is invalid");
+        feeCollectionWalletAddress = _feeCollectionWalletAddress;
 
-        emit CrestalWalletAddress(_crestalWalletAddress);
+        emit FeeCollectionWalletAddress(_feeCollectionWalletAddress);
     }
 }

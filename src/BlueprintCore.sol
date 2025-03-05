@@ -88,7 +88,7 @@ contract BlueprintCore is EIP712, Payment {
     string public constant CREATE_AGENT_OP = "create_agent";
     string public constant UPDATE_AGENT_OP = "update_agent";
 
-    address public crestalWalletAddress;
+    address public feeCollectionWalletAddress;
 
     mapping(string => address[]) public paymentAddressesMp;
 
@@ -589,7 +589,7 @@ contract BlueprintCore is EIP712, Payment {
         uint256 tokenId,
         address tokenAddress
     ) internal returns (bytes32 requestID) {
-        if (tokenAddress == address(0) && tokenId == 0) {
+        if (tokenAddress == address(0)) {
             // create agent with nft
             // check NFT token id is already used or not
             require(nftTokenIdMap[tokenId] != Status.Pickup, "NFT token id already used");
@@ -617,7 +617,7 @@ contract BlueprintCore is EIP712, Payment {
             int256 cost = paymentOpCostMp[tokenAddress][CREATE_AGENT_OP];
             if (cost > 0) {
                 // payment to crestal wallet address with token
-                payWithERC20(tokenAddress, uint256(cost), userAddress, crestalWalletAddress);
+                payWithERC20(tokenAddress, uint256(cost), userAddress, feeCollectionWalletAddress);
             } else {
                 // reset negative cost to 0
                 cost = 0;
@@ -642,6 +642,8 @@ contract BlueprintCore is EIP712, Payment {
         string memory serverURL,
         address tokenAddress
     ) public returns (bytes32 requestID) {
+        require(tokenAddress != address(0), "Token address is empty");
+
         requestID = createAgent(msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL, 0, tokenAddress);
     }
 
@@ -653,6 +655,8 @@ contract BlueprintCore is EIP712, Payment {
         address tokenAddress,
         bytes memory signature
     ) public returns (bytes32 requestID) {
+        require(tokenAddress != address(0), "Token address is empty");
+
         // get EIP712 hash digest
         bytes32 digest = getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
 
@@ -834,7 +838,7 @@ contract BlueprintCore is EIP712, Payment {
 
         if (cost > 0) {
             // transfer token to crestal wallet
-            payWithERC20(tokenAddress, uint256(cost), userAddress, crestalWalletAddress);
+            payWithERC20(tokenAddress, uint256(cost), userAddress, feeCollectionWalletAddress);
         }
 
         // reset status if it is generated proof
@@ -958,7 +962,7 @@ contract BlueprintCore is EIP712, Payment {
 
         require(isValidatePaymentAddress(msg.sender), "Payment address is not valid");
 
-        payWithERC20(tokenAddress, amount, msg.sender, crestalWalletAddress);
+        payWithERC20(tokenAddress, amount, msg.sender, feeCollectionWalletAddress);
 
         // update user top up
         userTopUpMp[msg.sender][tokenAddress] += amount;

@@ -17,7 +17,6 @@ contract BlueprintV5 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Blue
         VERSION = "5.0.0";
         __EIP712_init(SIGNING_DOMAIN, VERSION);
         __UUPSUpgradeable_init();
-        nftContractAddress = NFT_CONTRACT_ADDRESS;
     }
 
     // The _authorizeUpgrade function is required by the UUPSUpgradeable contract
