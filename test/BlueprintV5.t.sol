@@ -19,7 +19,6 @@ contract BlueprintTest is Test {
         blueprint.initialize(); // mimic upgradeable contract deploy behavior
 
         mockToken = new MockERC20();
-        blueprint.addPaymentAddress(address(mockToken));
 
         // set crestal wallet address
         blueprint.setFeeCollectionWalletAddress(address(0x7D8be0Dd8915E3511fFDDABDD631812be824f578));
@@ -36,8 +35,11 @@ contract BlueprintTest is Test {
         // Generate the signature
         (bytes memory signature, address signerAddress) = generateSignature(projectId, base64Proposal, serverURL);
 
+        // Add the payment address
+        blueprint.addPaymentAddress(address(mockToken));
+
         // set zero cost for create agents, use any number less than 0
-        blueprint.setCreateAgentTokenCost(address(mockToken), -1);
+        blueprint.setCreateAgentTokenCost(address(mockToken), 0);
 
         // Expect the createAgent event
         vm.expectEmit(true, false, true, true);
@@ -52,27 +54,27 @@ contract BlueprintTest is Test {
         assertEq(projectId, latestProjId);
 
         // Mint tokens to the test account
-        int256 validTokenAmount = 100 * 10 ** 18;
+        uint256 validTokenAmount = 100 * 10 ** 18;
 
         // set none zero cost for create agents, use any number greater than 0
         blueprint.setCreateAgentTokenCost(address(mockToken), validTokenAmount);
 
-        mockToken.mint(address(this), uint256(validTokenAmount));
+        mockToken.mint(address(this), validTokenAmount);
 
         // Verify the mint
         uint256 balance = mockToken.balanceOf(address(this));
-        assertEq(balance, uint256(validTokenAmount), "sender does not have the correct token balance");
+        assertEq(balance, validTokenAmount, "sender does not have the correct token balance");
 
         // check LogApproveEvent
         vm.expectEmit(true, true, false, true);
-        emit MockERC20.LogApproval(address(this), address(blueprint), uint256(validTokenAmount));
+        emit MockERC20.LogApproval(address(this), address(blueprint), validTokenAmount);
 
         // Approve the blueprint contract to spend tokens directly from the test contract
-        mockToken.approve(address(blueprint), uint256(validTokenAmount));
+        mockToken.approve(address(blueprint), validTokenAmount);
 
         // check allowance after approve
         uint256 allowance = mockToken.allowance(address(this), address(blueprint));
-        assertEq(allowance, uint256(validTokenAmount), "sender does not have the correct token allowance");
+        assertEq(allowance, validTokenAmount, "sender does not have the correct token allowance");
 
         // try with different project id
         projectId = bytes32(0x2723a34e38d0f0aa09ce626f00aa23c0464b52c75516cf3203cc4c9afeaf2981);
@@ -92,7 +94,10 @@ contract BlueprintTest is Test {
         );
 
         // Mint tokens to the test account
-        int256 validTokenAmount = 100 * 10 ** 18;
+        uint256 validTokenAmount = 100 * 10 ** 18;
+
+        // Add the payment address
+        blueprint.addPaymentAddress(address(mockToken));
 
         // set none zero cost for create agents, use any number greater than 0
         blueprint.setCreateAgentTokenCost(address(mockToken), validTokenAmount);
@@ -104,7 +109,7 @@ contract BlueprintTest is Test {
         );
 
         // Mint tokens to the test account
-        mockToken.mint(address(this), uint256(validTokenAmount));
+        mockToken.mint(address(this), validTokenAmount);
 
         // not approve blueprint to spend token
         vm.expectRevert("ERC20: transfer amount exceeds allowance");
@@ -113,7 +118,7 @@ contract BlueprintTest is Test {
         );
 
         // Approve the blueprint contract to spend tokens directly from the test contract
-        mockToken.approve(address(blueprint), uint256(validTokenAmount - 1));
+        mockToken.approve(address(blueprint), validTokenAmount - 1);
 
         // not enough allowance to create agent
         vm.expectRevert("ERC20: transfer amount exceeds allowance");
@@ -126,15 +131,18 @@ contract BlueprintTest is Test {
         string memory base64Proposal = "test base64 proposal";
         string memory serverURL = "app.crestal.network";
 
+        // Add the payment address
+        blueprint.addPaymentAddress(address(mockToken));
+
         // set zero cost for create agents, use any number less than 0
-        blueprint.setCreateAgentTokenCost(address(mockToken), -1);
+        blueprint.setCreateAgentTokenCost(address(mockToken), 0);
 
         // Create agent with token
         bytes32 requestId =
             blueprint.createAgentWithToken(projectId, base64Proposal, workerAddress, serverURL, address(mockToken));
 
         // set zero cost for create agents, use any number less than 0
-        blueprint.setUpdateCreateAgentTokenCost(address(mockToken), -1);
+        blueprint.setUpdateCreateAgentTokenCost(address(mockToken), 0);
 
         // Expect the UpdateDeploymentConfig event
         vm.expectEmit(true, true, true, true);
@@ -143,16 +151,16 @@ contract BlueprintTest is Test {
         // update agent deployment config
         blueprint.updateWorkerDeploymentConfig(address(mockToken), projectId, requestId, base64Proposal);
 
-        int256 validTokenAmount = 100 * 10 ** 18;
+        uint256 validTokenAmount = 100 * 10 ** 18;
 
         // Set the cost for updating the deployment config
         blueprint.setUpdateCreateAgentTokenCost(address(mockToken), validTokenAmount);
 
         // Mint tokens to the test account
-        mockToken.mint(address(this), uint256(validTokenAmount));
+        mockToken.mint(address(this), validTokenAmount);
 
         // Approve the blueprint contract to spend tokens
-        mockToken.approve(address(blueprint), uint256(validTokenAmount));
+        mockToken.approve(address(blueprint), validTokenAmount);
 
         // Expect the UpdateDeploymentConfig event
         vm.expectEmit(true, true, true, true);
@@ -166,20 +174,18 @@ contract BlueprintTest is Test {
         string memory base64Proposal = "test base64 proposal";
         string memory serverURL = "app.crestal.network";
 
+        // Add the payment address
+        blueprint.addPaymentAddress(address(mockToken));
+
         // set zero cost for create agents, use any number less than 0
-        blueprint.setCreateAgentTokenCost(address(mockToken), -1);
+        blueprint.setCreateAgentTokenCost(address(mockToken), 0);
 
         // Create agent with token
         bytes32 requestId =
             blueprint.createAgentWithToken(projectId, base64Proposal, workerAddress, serverURL, address(mockToken));
 
-        // not set agent update operation
-        vm.expectRevert("Invalid token address");
-        //  update agent deployment config
-        blueprint.updateWorkerDeploymentConfig(address(mockToken), projectId, requestId, base64Proposal);
-
         // Mint tokens to the test account
-        int256 validTokenAmount = 100 * 10 ** 18;
+        uint256 validTokenAmount = 100 * 10 ** 18;
 
         // set none zero cost for create agents, use any number greater than 0
         blueprint.setUpdateCreateAgentTokenCost(address(mockToken), validTokenAmount);
@@ -190,7 +196,7 @@ contract BlueprintTest is Test {
         blueprint.updateWorkerDeploymentConfig(address(mockToken), projectId, requestId, base64Proposal);
 
         // Mint tokens to the test account
-        mockToken.mint(address(this), uint256(validTokenAmount));
+        mockToken.mint(address(this), validTokenAmount);
 
         // not approve blueprint to spend token
         vm.expectRevert("ERC20: transfer amount exceeds allowance");
@@ -198,7 +204,7 @@ contract BlueprintTest is Test {
         blueprint.updateWorkerDeploymentConfig(address(mockToken), projectId, requestId, base64Proposal);
 
         // Approve the blueprint contract to spend tokens directly from the test contract
-        mockToken.approve(address(blueprint), uint256(validTokenAmount - 1));
+        mockToken.approve(address(blueprint), validTokenAmount - 1);
 
         // not enough allowance to create agent
         vm.expectRevert("ERC20: transfer amount exceeds allowance");

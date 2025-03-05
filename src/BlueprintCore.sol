@@ -92,7 +92,9 @@ contract BlueprintCore is EIP712, Payment {
 
     mapping(string => address[]) public paymentAddressesMp;
 
-    mapping(address => mapping(string => int256)) public paymentOpCostMp;
+    mapping(address => bool) public paymentAddressEnableMp;
+
+    mapping(address => mapping(string => uint256)) public paymentOpCostMp;
 
     mapping(address => mapping(address => uint256)) public userTopUpMp;
 
@@ -166,30 +168,6 @@ contract BlueprintCore is EIP712, Payment {
         // slither-disable-next-line timestamp
         require(projects[projectId].id != 0 || projectIDs[projectId] != dummyAddress, "projectId does not exist");
         _;
-    }
-
-    // get solver reputation
-    function getReputation(address addr) public view returns (uint256) {
-        return solverReputation[addr];
-    }
-
-    // set solver reputation
-    function setReputation(address addr) private returns (uint256 reputation) {
-        // get the solver reputation
-        // uint256 reputation;
-        reputation = solverReputation[addr];
-
-        if (reputation < 6 * factor) {
-            reputation += factor;
-        } else {
-            if (totalProposalRequest > 1000) {
-                reputation += (reputation - 6 * factor) / totalProposalRequest;
-            } else {
-                reputation += (reputation - 6 * factor) / 1000;
-            }
-        }
-
-        solverReputation[addr] = reputation;
     }
 
     function setProjectId(bytes32 projectId, address userAddr) internal newProject(projectId) {
@@ -271,38 +249,6 @@ contract BlueprintCore is EIP712, Payment {
     // https://github.com/crestalnetwork/crestal-dashboard-backend/blob/testnet-dev/listen/type.go#L9
     // example: {"type":"DA","latency":5,"max_throughput":20,"finality_time":10,"block_time":5,"created_at":"0001-01-01T00:00:00Z"}
     // associated base64 string: eyJ0eXBlIjoiREEiLCJsYXRlbmN5Ijo1LCJtYXhfdGhyb3VnaHB1dCI6MjAsImZpbmFsaXR5X3RpbWUiOjEwLCJibG9ja190aW1lIjo1LCJjcmVhdGVkX2F0IjoiMDAwMS0wMS0wMVQwMDowMDowMFoifQ
-    function createProposalRequest(bytes32 projectId, string memory base64RecParam, string memory serverURL)
-        public
-        returns (bytes32 requestID)
-    {
-        requestID = createCommonProposalRequest(msg.sender, projectId, base64RecParam, serverURL);
-    }
-
-    function createProposalRequestWithSig(
-        bytes32 projectId,
-        string memory base64RecParam,
-        string memory serverURL,
-        bytes memory signature
-    ) public returns (bytes32 requestID) {
-        // get EIP712 hash digest
-        bytes32 digest = getRequestProposalDigest(projectId, base64RecParam, serverURL);
-
-        // get signer address
-        address signerAddr = getSignerAddress(digest, signature);
-
-        requestID = createCommonProposalRequest(signerAddr, projectId, base64RecParam, serverURL);
-    }
-
-    function createPrivateProposalRequest(
-        bytes32 projectId,
-        address privateSolverAddress,
-        string memory base64RecParam,
-        string memory serverURL
-    ) public returns (bytes32 requestID) {
-        requestID = proposalRequest(msg.sender, projectId, privateSolverAddress, base64RecParam, serverURL);
-
-        emit RequestPrivateProposal(projectId, msg.sender, privateSolverAddress, requestID, base64RecParam, serverURL);
-    }
 
     function createProjectIDAndProposalRequest(bytes32 projectId, string memory base64RecParam, string memory serverURL)
         public
@@ -359,9 +305,6 @@ contract BlueprintCore is EIP712, Payment {
 
         latestDeploymentRequestID[userAddress] = requestID;
 
-        // set solver reputation
-        setReputation(solverAddress);
-
         // workerAddress == address(0): init deployment status, not picked by any worker
         // workerAddress != address(0):
         // private deployment request
@@ -411,106 +354,46 @@ contract BlueprintCore is EIP712, Payment {
         }
     }
 
-    // issue DeploymentRequest
-    // `base64Proposal` should be encoded base64 ChainRequestParam json string
-    // that was sent in `createProposalRequest` call
-    function createDeploymentRequest(
-        bytes32 projectId,
-        address solverAddress,
-        string memory base64Proposal,
-        string memory serverURL
-    ) public returns (bytes32 requestID) {
-        requestID =
-            createCommonDeploymentRequest(msg.sender, projectId, solverAddress, dummyAddress, base64Proposal, serverURL);
-    }
-
-    function createDeploymentRequestWithSig(
-        bytes32 projectId,
-        address solverAddress,
-        string memory base64Proposal,
-        string memory serverURL,
-        bytes memory signature
-    ) public returns (bytes32 requestID) {
-        // get EIP712 hash digest
-        bytes32 digest = getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
-
-        // get signer address
-        address signerAddr = getSignerAddress(digest, signature);
-
-        requestID =
-            createCommonDeploymentRequest(signerAddr, projectId, solverAddress, dummyAddress, base64Proposal, serverURL);
-    }
-
-    function createMultipleDeploymentRequest(
-        bytes32 projectId,
-        address solverAddress,
-        address workerAddress,
-        string[] memory base64Proposals,
-        string memory serverURL
-    ) public returns (bytes32 projectDeploymentID) {
-        require(solverAddress != dummyAddress, "solverAddress is not valid");
-        require(base64Proposals.length != 0, "base64Proposals array is empty");
-
-        for (uint256 i = 0; i < base64Proposals.length; ++i) {
-            (bytes32 requestID, bytes32 projectDeploymentId) =
-                deploymentRequest(msg.sender, projectId, solverAddress, workerAddress, base64Proposals[i], serverURL, i);
-
-            // slither-disable-next-line timestamp
-            if (projectDeploymentID != 0) {
-                deploymentIdList[projectDeploymentID].push(requestID);
-            } else {
-                // push request deploymentID into map, link to a project
-                projectDeploymentID = projectDeploymentId;
-                deploymentIdList[projectDeploymentID].push(requestID);
-            }
-
-            if (workerAddress == dummyAddress) {
-                emit RequestDeployment(projectId, msg.sender, solverAddress, requestID, base64Proposals[i], serverURL);
-            } else {
-                emit RequestPrivateDeployment(
-                    projectId, msg.sender, workerAddress, solverAddress, requestID, base64Proposals[i], serverURL
-                );
-
-                // emit accept deployment event since this deployment request is accepted by blueprint
-                emit AcceptDeployment(projectId, requestID, workerAddress);
-            }
-        }
-        totalDeploymentRequest += base64Proposals.length;
-
-        // once we got request deploymentID, then we set project requestDeploymentID, which points to a list of deploymentID
-        projects[projectId].requestDeploymentID = projectDeploymentID;
-    }
-
-    function createPrivateDeploymentRequest(
-        bytes32 projectId,
-        address solverAddress,
-        address privateWorkerAddress,
-        string memory base64Proposal,
-        string memory serverURL
-    ) public returns (bytes32 requestID) {
-        requestID = createCommonDeploymentRequest(
-            msg.sender, projectId, solverAddress, privateWorkerAddress, base64Proposal, serverURL
-        );
-    }
-
-    function createPrivateDeploymentRequestWithSig(
-        bytes32 projectId,
-        address solverAddress,
-        address privateWorkerAddress,
-        string memory base64Proposal,
-        string memory serverURL,
-        bytes memory signature
-    ) public returns (bytes32 requestID) {
-        // get EIP712 hash digest
-        bytes32 digest = getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
-
-        // get signer address
-        address signerAddr = getSignerAddress(digest, signature);
-
-        requestID = createCommonDeploymentRequest(
-            signerAddr, projectId, solverAddress, privateWorkerAddress, base64Proposal, serverURL
-        );
-    }
+    //
+    //    function createMultipleDeploymentRequest(
+    //        bytes32 projectId,
+    //        address solverAddress,
+    //        address workerAddress,
+    //        string[] memory base64Proposals,
+    //        string memory serverURL
+    //    ) public returns (bytes32 projectDeploymentID) {
+    //        require(solverAddress != dummyAddress, "solverAddress is not valid");
+    //        require(base64Proposals.length != 0, "base64Proposals array is empty");
+    //
+    //        for (uint256 i = 0; i < base64Proposals.length; ++i) {
+    //            (bytes32 requestID, bytes32 projectDeploymentId) =
+    //                deploymentRequest(msg.sender, projectId, solverAddress, workerAddress, base64Proposals[i], serverURL, i);
+    //
+    //            // slither-disable-next-line timestamp
+    //            if (projectDeploymentID != 0) {
+    //                deploymentIdList[projectDeploymentID].push(requestID);
+    //            } else {
+    //                // push request deploymentID into map, link to a project
+    //                projectDeploymentID = projectDeploymentId;
+    //                deploymentIdList[projectDeploymentID].push(requestID);
+    //            }
+    //
+    //            if (workerAddress == dummyAddress) {
+    //                emit RequestDeployment(projectId, msg.sender, solverAddress, requestID, base64Proposals[i], serverURL);
+    //            } else {
+    //                emit RequestPrivateDeployment(
+    //                    projectId, msg.sender, workerAddress, solverAddress, requestID, base64Proposals[i], serverURL
+    //                );
+    //
+    //                // emit accept deployment event since this deployment request is accepted by blueprint
+    //                emit AcceptDeployment(projectId, requestID, workerAddress);
+    //            }
+    //        }
+    //        totalDeploymentRequest += base64Proposals.length;
+    //
+    //        // once we got request deploymentID, then we set project requestDeploymentID, which points to a list of deploymentID
+    //        projects[projectId].requestDeploymentID = projectDeploymentID;
+    //    }
 
     function createCommonProjectIDAndDeploymentRequest(
         address userAddress,
@@ -612,15 +495,12 @@ contract BlueprintCore is EIP712, Payment {
         } else {
             // create agent with token
             // check token address is valid and in paymentOpCostMp
-            require(paymentOpCostMp[tokenAddress][CREATE_AGENT_OP] != 0, "Token address is invalid");
+            require(paymentAddressEnableMp[tokenAddress], "Token address is invalid");
             // get cost of create agent operation
-            int256 cost = paymentOpCostMp[tokenAddress][CREATE_AGENT_OP];
+            uint256 cost = paymentOpCostMp[tokenAddress][CREATE_AGENT_OP];
             if (cost > 0) {
                 // payment to crestal wallet address with token
-                payWithERC20(tokenAddress, uint256(cost), userAddress, feeCollectionWalletAddress);
-            } else {
-                // reset negative cost to 0
-                cost = 0;
+                payWithERC20(tokenAddress, cost, userAddress, feeCollectionWalletAddress);
             }
 
             requestID = createCommonProjectIDAndDeploymentRequest(
@@ -631,7 +511,7 @@ contract BlueprintCore is EIP712, Payment {
             deploymentOwners[requestID] = userAddress;
 
             // emit create agent event
-            emit CreateAgent(projectId, requestID, userAddress, tokenId, uint256(cost));
+            emit CreateAgent(projectId, requestID, userAddress, tokenId, cost);
         }
     }
 
@@ -740,38 +620,6 @@ contract BlueprintCore is EIP712, Payment {
             createAgent(signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId, address(0));
     }
 
-    function createProjectIDAndPrivateDeploymentRequestWithSig(
-        bytes32 projectId,
-        string memory base64Proposal,
-        address privateWorkerAddress,
-        string memory serverURL,
-        bytes memory signature
-    ) public returns (bytes32 requestID) {
-        // get EIP712 hash digest
-        bytes32 digest = getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
-
-        // get signer address
-        address signerAddr = getSignerAddress(digest, signature);
-
-        requestID = createCommonProjectIDAndDeploymentRequest(
-            signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL
-        );
-    }
-
-    function createProjectIdAndPrivateDeploymentWithConfig(
-        bytes32 projectId,
-        string memory base64Proposal,
-        address privateWorkerAddress,
-        string memory serverURL
-    ) public returns (bytes32 requestID) {
-        requestID =
-            createProjectIDAndPrivateDeploymentRequest(projectId, base64Proposal, privateWorkerAddress, serverURL);
-
-        emit UpdateDeploymentConfig(
-            projectId, requestID, requestDeploymentStatus[requestID].deployWorkerAddr, "Encrypted config for deployment"
-        );
-    }
-
     function submitProofOfDeployment(bytes32 projectId, bytes32 requestID, string memory proofBase64)
         public
         hasProject(projectId)
@@ -831,14 +679,14 @@ contract BlueprintCore is EIP712, Payment {
         require(deploymentOwners[requestID] == userAddress, "Only deployment owner can update config");
 
         // check tokenAddress is valid and must be in paymentOpCostMp
-        require(paymentOpCostMp[tokenAddress][UPDATE_AGENT_OP] != 0, "Invalid token address");
+        require(paymentAddressEnableMp[tokenAddress], "Invalid token address");
 
         // get update agent cost
-        int256 cost = paymentOpCostMp[tokenAddress][UPDATE_AGENT_OP];
+        uint256 cost = paymentOpCostMp[tokenAddress][UPDATE_AGENT_OP];
 
         if (cost > 0) {
             // transfer token to crestal wallet
-            payWithERC20(tokenAddress, uint256(cost), userAddress, feeCollectionWalletAddress);
+            payWithERC20(tokenAddress, cost, userAddress, feeCollectionWalletAddress);
         }
 
         // reset status if it is generated proof
@@ -900,11 +748,6 @@ contract BlueprintCore is EIP712, Payment {
         return paymentAddressesMp[PAYMENT_KEY];
     }
 
-    // get latest deployment status
-    function getDeploymentStatus(bytes32 requestID) public view returns (Status, address) {
-        return (requestDeploymentStatus[requestID].status, requestDeploymentStatus[requestID].deployWorkerAddr);
-    }
-
     // get latest proposal request id
     function getLatestProposalRequestID(address addr) public view returns (bytes32) {
         return latestProposalRequestID[addr];
@@ -944,23 +787,10 @@ contract BlueprintCore is EIP712, Payment {
         return whitelistUsers[userAddress] == Status.Issued || whitelistUsers[userAddress] == Status.Pickup;
     }
 
-    function isValidatePaymentAddress(address paymentAddress) internal view returns (bool) {
-        // need to add paymentAddress before setting cost
-        address[] memory paymentAddresses = paymentAddressesMp[PAYMENT_KEY];
-        uint256 i = 0;
-        for (; i < paymentAddresses.length; i++) {
-            if (paymentAddresses[i] == paymentAddress) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     function userTopUp(address tokenAddress, uint256 amount) public {
         require(amount > 0, "Amount must be greater than 0");
 
-        require(isValidatePaymentAddress(msg.sender), "Payment address is not valid");
+        require(paymentAddressEnableMp[tokenAddress], "Payment address is not valid");
 
         payWithERC20(tokenAddress, amount, msg.sender, feeCollectionWalletAddress);
 

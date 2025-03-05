@@ -6,9 +6,9 @@ import "./BlueprintCore.sol";
 
 contract Blueprint is OwnableUpgradeable, BlueprintCore {
     event PaymentAddressAdded(address paymentAddress);
-    event CreateAgentTokenCost(address paymentAddress, int256 cost);
-    event UpdateAgentTokenCost(address paymentAddress, int256 cost);
-    event RemoveTokenOperation(address paymentAddress);
+    event CreateAgentTokenCost(address paymentAddress, uint256 cost);
+    event UpdateAgentTokenCost(address paymentAddress, uint256 cost);
+    event RemovePaymentAddress(address paymentAddress);
     event FeeCollectionWalletAddress(address feeCollectionWalletAddress);
 
     // slither-disable-next-line naming-convention
@@ -46,39 +46,40 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
     function addPaymentAddress(address paymentAddress) public onlyOwner {
         require(paymentAddress != address(0), "Payment Address is invalid");
         paymentAddressesMp[PAYMENT_KEY].push(paymentAddress);
+        paymentAddressEnableMp[paymentAddress] = true;
 
         emit PaymentAddressAdded(paymentAddress);
     }
 
-    function setCreateAgentTokenCost(address paymentAddress, int256 cost) public onlyOwner {
+    function setCreateAgentTokenCost(address paymentAddress, uint256 cost) public onlyOwner {
         require(paymentAddress != address(0), "Payment Address is invalid");
 
-        require(isValidatePaymentAddress(paymentAddress), "Payment Address is not added");
+        require(paymentAddressEnableMp[paymentAddress], "Payment Address is not added");
 
         paymentOpCostMp[paymentAddress][CREATE_AGENT_OP] = cost;
 
         emit CreateAgentTokenCost(paymentAddress, cost);
     }
 
-    function setUpdateCreateAgentTokenCost(address paymentAddress, int256 cost) public onlyOwner {
+    function setUpdateCreateAgentTokenCost(address paymentAddress, uint256 cost) public onlyOwner {
         require(paymentAddress != address(0), "Payment Address is invalid");
 
-        require(isValidatePaymentAddress(paymentAddress), "Payment Address is not added");
+        require(paymentAddressEnableMp[paymentAddress], "Payment Address is not added");
 
         paymentOpCostMp[paymentAddress][UPDATE_AGENT_OP] = cost;
 
         emit UpdateAgentTokenCost(paymentAddress, cost);
     }
 
-    function removeTokenOperation(address paymentAddress) public onlyOwner {
+    function removePaymentAddress(address paymentAddress) public onlyOwner {
         require(paymentAddress != address(0), "Payment Address is invalid");
 
-        require(isValidatePaymentAddress(paymentAddress), "Payment Address is not added");
+        require(paymentAddressEnableMp[paymentAddress], "Payment Address is not added");
 
-        delete paymentOpCostMp[paymentAddress][CREATE_AGENT_OP];
-        delete paymentOpCostMp[paymentAddress][UPDATE_AGENT_OP];
+        // soft remove
+        paymentAddressEnableMp[paymentAddress] = false;
 
-        emit RemoveTokenOperation(paymentAddress);
+        emit RemovePaymentAddress(paymentAddress);
     }
 
     function setFeeCollectionWalletAddress(address _feeCollectionWalletAddress) public onlyOwner {
