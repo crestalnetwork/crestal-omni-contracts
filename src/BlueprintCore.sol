@@ -354,46 +354,6 @@ contract BlueprintCore is EIP712, Payment {
         }
     }
 
-    //
-    //    function createMultipleDeploymentRequest(
-    //        bytes32 projectId,
-    //        address solverAddress,
-    //        address workerAddress,
-    //        string[] memory base64Proposals,
-    //        string memory serverURL
-    //    ) public returns (bytes32 projectDeploymentID) {
-    //        require(solverAddress != dummyAddress, "solverAddress is not valid");
-    //        require(base64Proposals.length != 0, "base64Proposals array is empty");
-    //
-    //        for (uint256 i = 0; i < base64Proposals.length; ++i) {
-    //            (bytes32 requestID, bytes32 projectDeploymentId) =
-    //                deploymentRequest(msg.sender, projectId, solverAddress, workerAddress, base64Proposals[i], serverURL, i);
-    //
-    //            // slither-disable-next-line timestamp
-    //            if (projectDeploymentID != 0) {
-    //                deploymentIdList[projectDeploymentID].push(requestID);
-    //            } else {
-    //                // push request deploymentID into map, link to a project
-    //                projectDeploymentID = projectDeploymentId;
-    //                deploymentIdList[projectDeploymentID].push(requestID);
-    //            }
-    //
-    //            if (workerAddress == dummyAddress) {
-    //                emit RequestDeployment(projectId, msg.sender, solverAddress, requestID, base64Proposals[i], serverURL);
-    //            } else {
-    //                emit RequestPrivateDeployment(
-    //                    projectId, msg.sender, workerAddress, solverAddress, requestID, base64Proposals[i], serverURL
-    //                );
-    //
-    //                // emit accept deployment event since this deployment request is accepted by blueprint
-    //                emit AcceptDeployment(projectId, requestID, workerAddress);
-    //            }
-    //        }
-    //        totalDeploymentRequest += base64Proposals.length;
-    //
-    //        // once we got request deploymentID, then we set project requestDeploymentID, which points to a list of deploymentID
-    //        projects[projectId].requestDeploymentID = projectDeploymentID;
-    //    }
 
     function createCommonProjectIDAndDeploymentRequest(
         address userAddress,
