@@ -94,7 +94,7 @@ contract BlueprintCore is EIP712, Payment {
 
     mapping(address => mapping(string => int256)) public paymentOpCostMp;
 
-    mapping(address => mapping(string => uint256)) public userTopUpMp;
+    mapping(address => mapping(address => uint256)) public userTopUpMp;
 
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);
     event RequestProposal(
