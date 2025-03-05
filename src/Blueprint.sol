@@ -75,17 +75,4 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
 
         emit CrestalWalletAddress(_crestalWalletAddress);
     }
-
-    function isValidatePaymentAddress(address paymentAddress) internal view returns (bool) {
-        // need to add paymentAddress before setting cost
-        address[] memory paymentAddresses = paymentAddressesMp[PAYMENT_KEY];
-        uint256 i = 0;
-        for (; i < paymentAddresses.length; i++) {
-            if (paymentAddresses[i] == paymentAddress) {
-                return true;
-            }
-        }
-
-        return false;
-    }
 }

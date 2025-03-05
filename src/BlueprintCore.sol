@@ -94,6 +94,8 @@ contract BlueprintCore is EIP712, Payment {
 
     mapping(address => mapping(string => int256)) public paymentOpCostMp;
 
+    mapping(address => mapping(string => uint256)) public userTopUpMp;
+
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);
     event RequestProposal(
         bytes32 indexed projectID,
@@ -139,6 +141,8 @@ contract BlueprintCore is EIP712, Payment {
     event CreateAgent(
         bytes32 indexed projectID, bytes32 indexed requestID, address walletAddress, uint256 nftTokenId, uint256 amount
     );
+
+    event UserTopUp(address walletAddress, address tokenAddress, uint256 amount);
 
     modifier newProject(bytes32 projectId) {
         // check project id
@@ -934,5 +938,31 @@ contract BlueprintCore is EIP712, Payment {
 
     function isWhitelistUser(address userAddress) public view returns (bool) {
         return whitelistUsers[userAddress] == Status.Issued || whitelistUsers[userAddress] == Status.Pickup;
+    }
+
+    function isValidatePaymentAddress(address paymentAddress) internal view returns (bool) {
+        // need to add paymentAddress before setting cost
+        address[] memory paymentAddresses = paymentAddressesMp[PAYMENT_KEY];
+        uint256 i = 0;
+        for (; i < paymentAddresses.length; i++) {
+            if (paymentAddresses[i] == paymentAddress) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    function userTopUp(address tokenAddress, uint256 amount) public {
+        require(amount > 0, "Amount must be greater than 0");
+
+        require(isValidatePaymentAddress(msg.sender), "Payment address is not valid");
+
+        payWithERC20(tokenAddress, amount, msg.sender, crestalWalletAddress);
+
+        // update user top up
+        userTopUpMp[msg.sender][tokenAddress] += amount;
+
+        emit UserTopUp(msg.sender, tokenAddress, amount);
     }
 }
