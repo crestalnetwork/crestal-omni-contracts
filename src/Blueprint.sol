@@ -8,6 +8,7 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
     event PaymentAddressAdded(address paymentAddress);
     event CreateAgentTokenCost(address paymentAddress, int256 cost);
     event UpdateAgentTokenCost(address paymentAddress, int256 cost);
+    event RemoveTokenOperation(address paymentAddress);
     event FeeCollectionWalletAddress(address feeCollectionWalletAddress);
 
     // slither-disable-next-line naming-convention
@@ -67,6 +68,17 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
         paymentOpCostMp[paymentAddress][UPDATE_AGENT_OP] = cost;
 
         emit UpdateAgentTokenCost(paymentAddress, cost);
+    }
+
+    function removeTokenOperation(address paymentAddress) public onlyOwner {
+        require(paymentAddress != address(0), "Payment Address is invalid");
+
+        require(isValidatePaymentAddress(paymentAddress), "Payment Address is not added");
+
+        delete paymentOpCostMp[paymentAddress][CREATE_AGENT_OP];
+        delete paymentOpCostMp[paymentAddress][UPDATE_AGENT_OP];
+
+        emit RemoveTokenOperation(paymentAddress);
     }
 
     function setFeeCollectionWalletAddress(address _feeCollectionWalletAddress) public onlyOwner {
