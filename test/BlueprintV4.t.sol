@@ -3,7 +3,7 @@ pragma solidity ^0.8.26;
 import {Test, console} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {BlueprintV4} from "../src/BlueprintV4.sol";
-import {BlueprintCore} from "../src/BlueprintCore.sol";
+import {BlueprintCore} from "../src/history/BlueprintCoreV4.sol";
 import {stdError} from "forge-std/StdError.sol";
 import {MockERC721} from "./MockERC721.sol";
 
