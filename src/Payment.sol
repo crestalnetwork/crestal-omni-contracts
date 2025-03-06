@@ -20,6 +20,8 @@ contract Payment {
         return nftToken.ownerOf(nftId) == userAddress;
     }
 
+    // This is to support gasless flow: normally, the caller must always be the msg.sender
+    // slither-disable-next-line arbitrary-send-erc20
     function payWithERC20(address erc20TokenAddress, uint256 amount, address fromAddress, address toAddress) public {
         // check from and to address
         require(fromAddress != toAddress, "Cannot transfer to self address");
