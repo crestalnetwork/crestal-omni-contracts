@@ -144,7 +144,9 @@ contract BlueprintCore is EIP712, Payment {
         bytes32 indexed projectID, bytes32 indexed requestID, address walletAddress, uint256 nftTokenId, uint256 amount
     );
 
-    event UserTopUp(address walletAddress, address tokenAddress, uint256 amount);
+    event UserTopUp(
+        address indexed walletAddress, address feeCollectionWalletAddress, address tokenAddress, uint256 amount
+    );
 
     modifier newProject(bytes32 projectId) {
         // check project id
@@ -756,6 +758,6 @@ contract BlueprintCore is EIP712, Payment {
         // update user top up
         userTopUpMp[msg.sender][tokenAddress] += amount;
 
-        emit UserTopUp(msg.sender, tokenAddress, amount);
+        emit UserTopUp(msg.sender, feeCollectionWalletAddress, tokenAddress, amount);
     }
 }

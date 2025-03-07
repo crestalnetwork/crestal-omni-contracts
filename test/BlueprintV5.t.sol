@@ -227,7 +227,9 @@ contract BlueprintTest is Test {
 
         // Expect the UserTopUp event
         vm.expectEmit(true, true, true, true);
-        emit BlueprintCore.UserTopUp(address(this), address(mockToken), topUpAmount);
+        emit BlueprintCore.UserTopUp(
+            address(this), blueprint.feeCollectionWalletAddress(), address(mockToken), topUpAmount
+        );
 
         // Call the userTopUp function
         blueprint.userTopUp(address(mockToken), topUpAmount);
