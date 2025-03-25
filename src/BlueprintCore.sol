@@ -98,6 +98,8 @@ contract BlueprintCore is EIP712, Payment {
 
     mapping(address => mapping(address => uint256)) public userTopUpMp;
 
+    mapping(address => uint256) private userNonceMp;
+
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);
     event RequestProposal(
         bytes32 indexed projectID,
@@ -581,11 +583,89 @@ contract BlueprintCore is EIP712, Payment {
             createAgent(signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId, address(0));
     }
 
+    function resetDeployment(
+        address userAddress,
+        bytes32 projectId,
+        bytes32 requestID,
+        address workerAddress,
+        string memory base64Proposal,
+        string memory serverURL
+    ) internal hasProject(projectId) {
+        require(requestDeploymentStatus[requestID].status != Status.Init, "requestID does not exist");
+
+        // generate_proof status is not allowed to reset
+        require(
+            requestDeploymentStatus[requestID].status != Status.GeneratedProof, "requestID has already submitted proof"
+        );
+
+        // check if it owner of requestID
+        require(deploymentOwners[requestID] == userAddress, "Only deployment owner can update config");
+
+        DeploymentStatus memory deploymentStatus = DeploymentStatus({
+            status: (workerAddress == dummyAddress ? Status.Issued : Status.Pickup),
+            deployWorkerAddr: workerAddress
+        });
+
+        requestDeploymentStatus[requestID] = deploymentStatus;
+
+        // public deployment request
+        if (workerAddress == dummyAddress) {
+            // reset deployment status
+            requestDeploymentStatus[requestID].status = Status.Issued;
+            emit RequestDeployment(projectId, userAddress, dummyAddress, requestID, base64Proposal, serverURL);
+        } else {
+            // reset deployment status
+            requestDeploymentStatus[requestID].status = Status.Pickup;
+            // private deployment request
+            emit RequestPrivateDeployment(
+                projectId, userAddress, workerAddress, dummyAddress, requestID, base64Proposal, serverURL
+            );
+            // emit accept deployment event since this deployment request is accepted by blueprint
+            emit AcceptDeployment(projectId, requestID, workerAddress);
+        }
+    }
+
+    function resetDeploymentRequest(
+        bytes32 projectId,
+        bytes32 requestID,
+        address workerAddress,
+        string memory base64Proposal,
+        string memory serverURL
+    ) public {
+        resetDeployment(msg.sender, projectId, requestID, workerAddress, base64Proposal, serverURL);
+    }
+
+    function resetDeploymentRequestWithSig(
+        bytes32 projectId,
+        bytes32 requestID,
+        address workerAddress,
+        string memory base64Proposal,
+        string memory serverURL,
+        bytes memory signature
+    ) public {
+        address owner = deploymentOwners[requestID];
+        require(owner != address(0), "Invalid requestID");
+
+        // get EIP712 hash digest
+        bytes32 digest =
+            getRequestResetDeploymentDigest(projectId, requestID, workerAddress, base64Proposal, userNonceMp[owner]);
+
+        // get signer address
+        address signerAddr = getSignerAddress(digest, signature);
+
+        // check if signer address is owner of requestID
+        require(signerAddr == owner, "Invalid signature");
+
+        resetDeployment(signerAddr, projectId, requestID, workerAddress, base64Proposal, serverURL);
+
+        // increase nonce
+        userNonceMp[owner]++;
+    }
+
     function submitProofOfDeployment(bytes32 projectId, bytes32 requestID, string memory proofBase64)
         public
         hasProject(projectId)
     {
-        require(requestID.length > 0, "requestID is empty");
         require(requestDeploymentStatus[requestID].status != Status.Init, "requestID does not exist");
         require(requestDeploymentStatus[requestID].deployWorkerAddr == msg.sender, "Wrong worker address");
         require(requestDeploymentStatus[requestID].status != Status.GeneratedProof, "Already submitted proof");
@@ -759,5 +839,14 @@ contract BlueprintCore is EIP712, Payment {
         userTopUpMp[msg.sender][tokenAddress] += amount;
 
         emit UserTopUp(msg.sender, feeCollectionWalletAddress, tokenAddress, amount);
+    }
+
+    function getUserNonce(address userAddress) public view returns (uint256) {
+        return userNonceMp[userAddress];
+    }
+
+    // get latest deployment status
+    function getDeploymentStatus(bytes32 requestID) public view returns (Status, address) {
+        return (requestDeploymentStatus[requestID].status, requestDeploymentStatus[requestID].deployWorkerAddr);
     }
 }
