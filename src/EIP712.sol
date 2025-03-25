@@ -10,10 +10,12 @@ contract EIP712 is EIP712Upgradeable {
         keccak256("ProposalRequest(bytes32 projectId,string base64RecParam,string serverURL)");
     bytes32 public constant DEPLOYMENT_REQUEST_TYPEHASH =
         keccak256("DeploymentRequest(bytes32 projectId,string base64RecParam,string serverURL)");
-    bytes32 public constant CREATE_AGENT_WITH_TOKEN_TYPEHASH =
-        keccak256("CreateAgentWithToken(bytes32 projectId,string base64RecParam,string serverURL,address privateWorkerAddress,address tokenAddress)");
-    bytes32 public constant CREATE_AGENT_WITH_NFT_TYPEHASH =
-        keccak256("CreateAgentWithNFT(bytes32 projectId,string base64RecParam,string serverURL,address privateWorkerAddress,uint256 tokenId)");
+    bytes32 public constant CREATE_AGENT_WITH_TOKEN_TYPEHASH = keccak256(
+        "CreateAgentWithToken(bytes32 projectId,string base64RecParam,string serverURL,address privateWorkerAddress,address tokenAddress)"
+    );
+    bytes32 public constant CREATE_AGENT_WITH_NFT_TYPEHASH = keccak256(
+        "CreateAgentWithNFT(bytes32 projectId,string base64RecParam,string serverURL,address privateWorkerAddress,uint256 tokenId)"
+    );
     bytes32 public constant UPDATE_WORKER_CONFIG_TYPEHASH = keccak256(
         "UpdateWorkerConfig(address tokenAddress,bytes32 projectId,bytes32 requestID,string updatedBase64Config,uint256 nonce)"
     );
