@@ -98,6 +98,8 @@ contract BlueprintCore is EIP712, Payment {
 
     mapping(address => mapping(address => uint256)) public userTopUpMp;
 
+    mapping(address => uint256) private userNonceMp;
+
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);
     event RequestProposal(
         bytes32 indexed projectID,
@@ -499,7 +501,7 @@ contract BlueprintCore is EIP712, Payment {
         require(tokenAddress != address(0), "Token address is empty");
 
         // get EIP712 hash digest
-        bytes32 digest = getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
+        bytes32 digest = getCreateAgentWithTokenDigest(projectId, base64Proposal, serverURL, privateWorkerAddress, tokenAddress);
 
         // get signer address
         address signerAddr = getSignerAddress(digest, signature);
@@ -546,7 +548,7 @@ contract BlueprintCore is EIP712, Payment {
         bytes memory signature
     ) public returns (bytes32 requestID) {
         // get EIP712 hash digest
-        bytes32 digest = getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
+        bytes32 digest = getCreateAgentWithNFTDigest(projectId, base64Proposal, serverURL, privateWorkerAddress, tokenId);
 
         // get signer address
         address signerAddr = getSignerAddress(digest, signature);
@@ -572,7 +574,7 @@ contract BlueprintCore is EIP712, Payment {
         uint256 tokenId
     ) public returns (bytes32 requestID) {
         // get EIP712 hash digest
-        bytes32 digest = getRequestDeploymentDigest(projectId, base64Proposal, serverURL);
+        bytes32 digest = getCreateAgentWithNFTDigest(projectId, base64Proposal, serverURL, privateWorkerAddress, tokenId);
 
         // get signer address
         address signerAddr = getSignerAddress(digest, signature);
@@ -676,13 +678,22 @@ contract BlueprintCore is EIP712, Payment {
         string memory updatedBase64Config,
         bytes memory signature
     ) public {
+
+        address owner = deploymentOwners[requestID];
+        require(owner != address(0), "Invalid requestID");
+
         // get EIP712 hash digest
-        bytes32 digest = getRequestDeploymentDigest(projectId, updatedBase64Config, "app.crestal.network");
+        bytes32 digest = getUpdateWorkerConfigDigest(tokenAddress, projectId, requestID, updatedBase64Config, userNonceMp[owner]);
 
         // get signer address
         address signerAddr = getSignerAddress(digest, signature);
 
+        // check if signer address is owner of requestID
+        require(signerAddr == owner, "Invalid signature");
+
         updateWorkerDeploymentConfigCommon(tokenAddress, signerAddr, projectId, requestID, updatedBase64Config);
+
+        userNonceMp[owner]++;
     }
 
     // set worker public key
@@ -759,5 +770,11 @@ contract BlueprintCore is EIP712, Payment {
         userTopUpMp[msg.sender][tokenAddress] += amount;
 
         emit UserTopUp(msg.sender, feeCollectionWalletAddress, tokenAddress, amount);
+    }
+    // it is ok to expose public function to get user nonce
+    // since the signature with nonce is only used for one time
+    // reason make userAddress as param is that gasless flow, user can get nonce with other wallet address, not need msg.sender
+    function getUserNonce(address userAddress) public view returns (uint256) {
+        return userNonceMp[userAddress];
     }
 }

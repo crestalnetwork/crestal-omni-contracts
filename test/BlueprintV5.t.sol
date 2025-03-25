@@ -14,6 +14,7 @@ contract BlueprintTest is Test {
     bytes32 public projectId;
     address public workerAddress;
     address public dummyAddress;
+    uint256 signerPrivateKey;
 
     function setUp() public {
         blueprint = new BlueprintV5();
@@ -27,6 +28,7 @@ contract BlueprintTest is Test {
         projectId = bytes32(0x2723a34e38d0f0aa09ce626f00aa23c0464b52c75516cf3203cc4c9afeaf2980);
         workerAddress = address(0x4d6585D89F889F29f77fd7Dd71864269BA1B31df);
         dummyAddress = address(0);
+        signerPrivateKey = 0xA11CE;
     }
 
     function test_createAgentWithToken() public {
@@ -34,7 +36,7 @@ contract BlueprintTest is Test {
         string memory serverURL = "http://example.com";
 
         // Generate the signature
-        (bytes memory signature, address signerAddress) = generateSignature(projectId, base64Proposal, serverURL);
+        (bytes memory signature, address signerAddress) = generateCreateAgentWithTokenAddressSignature(projectId, base64Proposal, serverURL, workerAddress, address(mockToken));
 
         // Add the payment address
         blueprint.addPaymentAddress(address(mockToken));
@@ -128,6 +130,38 @@ contract BlueprintTest is Test {
         );
     }
 
+    function test_updateWorkerDeploymentConfigWithSig() public {
+        string memory base64Proposal = "test base64 proposal";
+        string memory serverURL = "app.crestal.network";
+        test_createAgentWithToken();
+
+        address signerAddress = vm.addr(signerPrivateKey);
+        uint256 nonce = blueprint.getUserNonce(signerAddress);
+
+        // get the latest deployment request id
+        bytes32 requestId = blueprint.getLatestDeploymentRequestID(signerAddress);
+
+        // set zero cost for create agents, use any number less than 0
+        blueprint.setUpdateCreateAgentTokenCost(address(mockToken), 0);
+        // Generate the signature
+        (bytes memory signature,) = generateUpdateWorkerConfigSignature(address(mockToken), projectId, requestId, base64Proposal, nonce);
+
+
+        // Expect the UpdateDeploymentConfig event
+        vm.expectEmit(true, true, true, true);
+        emit BlueprintCore.UpdateDeploymentConfig(projectId, requestId, workerAddress, base64Proposal);
+
+        // update agent deployment config
+        blueprint.updateWorkerDeploymentConfigWithSig(address(mockToken), projectId, requestId, base64Proposal,signature);
+
+        // check nonce
+        uint256 newNonce = blueprint.getUserNonce(signerAddress);
+        assertEq(newNonce, nonce + 1, "nonce is not updated");
+
+        // try again with old signature, it will fail
+        vm.expectRevert("Invalid signature");
+        blueprint.updateWorkerDeploymentConfigWithSig(address(mockToken), projectId, requestId, base64Proposal,signature);
+    }
     function test_updateWorkerDeploymentConfig() public {
         string memory base64Proposal = "test base64 proposal";
         string memory serverURL = "app.crestal.network";
@@ -349,14 +383,23 @@ contract BlueprintTest is Test {
         assertTrue(found, "Payment address should be in the list");
     }
 
-    function generateSignature(bytes32 _projectId, string memory _base64Proposal, string memory _serverURL)
+    function generateUpdateWorkerConfigSignature(address _tokenAddress, bytes32 _projectId, bytes32 _requestID, string memory _updatedBase64Config, uint256 _nonce)
         internal
         view
         returns (bytes memory, address)
     {
-        bytes32 digest = blueprint.getRequestDeploymentDigest(_projectId, _base64Proposal, _serverURL);
-        uint256 signerPrivateKey = 0xA11CE;
+        bytes32 digest = blueprint.getUpdateWorkerConfigDigest(_tokenAddress, _projectId, _requestID, _updatedBase64Config, _nonce);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, digest);
-        return (abi.encodePacked(r, s, v), vm.addr(0xA11CE));
+        return (abi.encodePacked(r, s, v), vm.addr(signerPrivateKey));
+    }
+
+    function generateCreateAgentWithTokenAddressSignature(bytes32 _projectId, string memory _base64Proposal, string memory _serverURL,address workerAddress,address tokenAddress)
+        internal
+        view
+        returns (bytes memory, address)
+    {
+        bytes32 digest = blueprint.getCreateAgentWithTokenDigest(_projectId, _base64Proposal, _serverURL, workerAddress, tokenAddress);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, digest);
+        return (abi.encodePacked(r, s, v), vm.addr(signerPrivateKey));
     }
 }
