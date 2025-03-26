@@ -458,6 +458,15 @@ contract BlueprintCore is EIP712, Payment {
             require(paymentAddressEnableMp[tokenAddress], "Token address is invalid");
             // get cost of create agent operation
             uint256 cost = paymentOpCostMp[tokenAddress][CREATE_AGENT_OP];
+
+            requestID = createCommonProjectIDAndDeploymentRequest(
+                userAddress, projectId, base64Proposal, privateWorkerAddress, serverURL
+            );
+
+            // set deployment owner
+            deploymentOwners[requestID] = userAddress;
+
+            // CEI pattern : Handle token transfers after updating the all of the above functions state.
             if (cost > 0) {
                 if (tokenAddress == address(0)) {
                     require(msg.value == cost, "Native token amount mismatch");
@@ -468,13 +477,6 @@ contract BlueprintCore is EIP712, Payment {
                     payWithERC20(tokenAddress, cost, userAddress, feeCollectionWalletAddress);
                 }
             }
-
-            requestID = createCommonProjectIDAndDeploymentRequest(
-                userAddress, projectId, base64Proposal, privateWorkerAddress, serverURL
-            );
-
-            // set deployment owner
-            deploymentOwners[requestID] = userAddress;
 
             // emit create agent event
             emit CreateAgent(projectId, requestID, userAddress, tokenId, cost);
@@ -683,6 +685,12 @@ contract BlueprintCore is EIP712, Payment {
         // check tokenAddress is valid and must be in paymentOpCostMp
         require(paymentAddressEnableMp[tokenAddress], "Invalid token address");
 
+        // reset status if it is generated proof
+        if (requestDeploymentStatus[requestID].status == Status.GeneratedProof) {
+            requestDeploymentStatus[requestID].status = Status.Pickup;
+        }
+
+        // CEI pattern : Handle token transfers after updating the all of the above functions state.
         // get update agent cost
         uint256 cost = paymentOpCostMp[tokenAddress][UPDATE_AGENT_OP];
 
@@ -695,11 +703,6 @@ contract BlueprintCore is EIP712, Payment {
                 // payment to feeCollectionWalletAddress with token
                 payWithERC20(tokenAddress, cost, userAddress, feeCollectionWalletAddress);
             }
-        }
-
-        // reset status if it is generated proof
-        if (requestDeploymentStatus[requestID].status == Status.GeneratedProof) {
-            requestDeploymentStatus[requestID].status = Status.Pickup;
         }
 
         emit UpdateDeploymentConfig(
@@ -812,6 +815,9 @@ contract BlueprintCore is EIP712, Payment {
 
         require(paymentAddressEnableMp[tokenAddress], "Payment address is not valid");
 
+        // update user top up
+        userTopUpMp[msg.sender][tokenAddress] += amount;
+
         if (tokenAddress == address(0)) {
             require(msg.value == amount, "Native token amount mismatch");
 
@@ -821,9 +827,6 @@ contract BlueprintCore is EIP712, Payment {
             // payment to feeCollectionWalletAddress with token
             payWithERC20(tokenAddress, amount, msg.sender, feeCollectionWalletAddress);
         }
-
-        // update user top up
-        userTopUpMp[msg.sender][tokenAddress] += amount;
 
         emit UserTopUp(msg.sender, feeCollectionWalletAddress, tokenAddress, amount);
     }
