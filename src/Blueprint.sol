@@ -52,7 +52,6 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
     }
 
     function addPaymentAddress(address paymentAddress) public onlyOwner {
-        require(paymentAddress != address(0), "Payment Address is invalid");
         paymentAddressesMp[PAYMENT_KEY].push(paymentAddress);
         paymentAddressEnableMp[paymentAddress] = true;
 
@@ -60,8 +59,6 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
     }
 
     function setCreateAgentTokenCost(address paymentAddress, uint256 cost) public onlyOwner {
-        require(paymentAddress != address(0), "Payment Address is invalid");
-
         require(paymentAddressEnableMp[paymentAddress], "Payment Address is not added");
 
         paymentOpCostMp[paymentAddress][CREATE_AGENT_OP] = cost;
@@ -70,8 +67,6 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
     }
 
     function setUpdateCreateAgentTokenCost(address paymentAddress, uint256 cost) public onlyOwner {
-        require(paymentAddress != address(0), "Payment Address is invalid");
-
         require(paymentAddressEnableMp[paymentAddress], "Payment Address is not added");
 
         paymentOpCostMp[paymentAddress][UPDATE_AGENT_OP] = cost;
@@ -80,8 +75,6 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
     }
 
     function removePaymentAddress(address paymentAddress) public onlyOwner {
-        require(paymentAddress != address(0), "Payment Address is invalid");
-
         require(paymentAddressEnableMp[paymentAddress], "Payment Address is not added");
 
         // soft remove

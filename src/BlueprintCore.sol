@@ -201,13 +201,6 @@ contract BlueprintCore is EIP712, Payment {
         setProjectId(projectId, msg.sender);
     }
 
-    function upgradeProject(bytes32 projectId) public hasProject(projectId) {
-        // reset project info
-        projects[projectId].requestProposalID = 0;
-        projects[projectId].requestDeploymentID = 0;
-        projects[projectId].proposedSolverAddr = dummyAddress;
-    }
-
     function proposalRequest(
         address userAddress,
         bytes32 projectId,
@@ -439,7 +432,7 @@ contract BlueprintCore is EIP712, Payment {
         uint256 tokenId,
         address tokenAddress
     ) internal returns (bytes32 requestID) {
-        if (tokenAddress == address(0)) {
+        if (tokenAddress == address(0) && tokenId > 0) {
             // create agent with nft
             // check NFT token id is already used or not
             require(nftTokenIdMap[tokenId] != Status.Pickup, "NFT token id already used");
@@ -466,8 +459,14 @@ contract BlueprintCore is EIP712, Payment {
             // get cost of create agent operation
             uint256 cost = paymentOpCostMp[tokenAddress][CREATE_AGENT_OP];
             if (cost > 0) {
-                // payment to crestal wallet address with token
-                payWithERC20(tokenAddress, cost, userAddress, feeCollectionWalletAddress);
+                if (tokenAddress == address(0)) {
+                    require(msg.value == cost, "Native token amount mismatch");
+                    // payment to fee collection wallet address with ether
+                    payWithNativeToken(payable(feeCollectionWalletAddress), cost);
+                } else {
+                    // payment to feeCollectionWalletAddress with token
+                    payWithERC20(tokenAddress, cost, userAddress, feeCollectionWalletAddress);
+                }
             }
 
             requestID = createCommonProjectIDAndDeploymentRequest(
@@ -488,9 +487,7 @@ contract BlueprintCore is EIP712, Payment {
         address privateWorkerAddress,
         string memory serverURL,
         address tokenAddress
-    ) public returns (bytes32 requestID) {
-        require(tokenAddress != address(0), "Token address is empty");
-
+    ) public payable returns (bytes32 requestID) {
         requestID = createAgent(msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL, 0, tokenAddress);
     }
 
@@ -501,9 +498,7 @@ contract BlueprintCore is EIP712, Payment {
         string memory serverURL,
         address tokenAddress,
         bytes memory signature
-    ) public returns (bytes32 requestID) {
-        require(tokenAddress != address(0), "Token address is empty");
-
+    ) public payable returns (bytes32 requestID) {
         // get EIP712 hash digest
         bytes32 digest =
             getCreateAgentWithTokenDigest(projectId, base64Proposal, serverURL, privateWorkerAddress, tokenAddress);
@@ -525,52 +520,6 @@ contract BlueprintCore is EIP712, Payment {
             createAgent(msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId, address(0));
     }
 
-    function createAgentWithWhitelistUsers(
-        bytes32 projectId,
-        string memory base64Proposal,
-        address privateWorkerAddress,
-        string memory serverURL,
-        uint256 tokenId
-    ) public returns (bytes32 requestID) {
-        // check whitelist user
-        require(whitelistUsers[msg.sender] != Status.Init, "User is not in whitelist");
-
-        // one whitelist user can only create one agent
-        require(whitelistUsers[msg.sender] != Status.Pickup, "User already created agent");
-
-        requestID =
-            createAgent(msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId, address(0));
-
-        whitelistUsers[msg.sender] = Status.Pickup;
-    }
-
-    function createAgentWithWhitelistUsersWithSig(
-        bytes32 projectId,
-        string memory base64Proposal,
-        address privateWorkerAddress,
-        string memory serverURL,
-        uint256 tokenId,
-        bytes memory signature
-    ) public returns (bytes32 requestID) {
-        // get EIP712 hash digest
-        bytes32 digest =
-            getCreateAgentWithNFTDigest(projectId, base64Proposal, serverURL, privateWorkerAddress, tokenId);
-
-        // get signer address
-        address signerAddr = getSignerAddress(digest, signature);
-
-        // check whitelist user
-        require(whitelistUsers[signerAddr] != Status.Init, "User is not in whitelist");
-
-        // one whitelist user can only create one agent
-        require(whitelistUsers[signerAddr] != Status.Pickup, "User already created agent");
-
-        requestID =
-            createAgent(signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId, address(0));
-
-        whitelistUsers[signerAddr] = Status.Pickup;
-    }
-
     function createAgentWithSigWithNFT(
         bytes32 projectId,
         string memory base64Proposal,
@@ -590,11 +539,89 @@ contract BlueprintCore is EIP712, Payment {
             createAgent(signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId, address(0));
     }
 
+    function resetDeployment(
+        address userAddress,
+        bytes32 projectId,
+        bytes32 requestID,
+        address workerAddress,
+        string memory base64Proposal,
+        string memory serverURL
+    ) internal hasProject(projectId) {
+        require(requestDeploymentStatus[requestID].status != Status.Init, "requestID does not exist");
+
+        // generate_proof status is not allowed to reset
+        require(
+            requestDeploymentStatus[requestID].status != Status.GeneratedProof, "requestID has already submitted proof"
+        );
+
+        // check if it owner of requestID
+        require(deploymentOwners[requestID] == userAddress, "Only deployment owner can update config");
+
+        DeploymentStatus memory deploymentStatus = DeploymentStatus({
+            status: (workerAddress == dummyAddress ? Status.Issued : Status.Pickup),
+            deployWorkerAddr: workerAddress
+        });
+
+        requestDeploymentStatus[requestID] = deploymentStatus;
+
+        // public deployment request
+        if (workerAddress == dummyAddress) {
+            // reset deployment status
+            requestDeploymentStatus[requestID].status = Status.Issued;
+            emit RequestDeployment(projectId, userAddress, dummyAddress, requestID, base64Proposal, serverURL);
+        } else {
+            // reset deployment status
+            requestDeploymentStatus[requestID].status = Status.Pickup;
+            // private deployment request
+            emit RequestPrivateDeployment(
+                projectId, userAddress, workerAddress, dummyAddress, requestID, base64Proposal, serverURL
+            );
+            // emit accept deployment event since this deployment request is accepted by blueprint
+            emit AcceptDeployment(projectId, requestID, workerAddress);
+        }
+    }
+
+    function resetDeploymentRequest(
+        bytes32 projectId,
+        bytes32 requestID,
+        address workerAddress,
+        string memory base64Proposal,
+        string memory serverURL
+    ) public {
+        resetDeployment(msg.sender, projectId, requestID, workerAddress, base64Proposal, serverURL);
+    }
+
+    function resetDeploymentRequestWithSig(
+        bytes32 projectId,
+        bytes32 requestID,
+        address workerAddress,
+        string memory base64Proposal,
+        string memory serverURL,
+        bytes memory signature
+    ) public {
+        address owner = deploymentOwners[requestID];
+        require(owner != address(0), "Invalid requestID");
+
+        // get EIP712 hash digest
+        bytes32 digest =
+            getRequestResetDeploymentDigest(projectId, requestID, workerAddress, base64Proposal, userNonceMp[owner]);
+
+        // get signer address
+        address signerAddr = getSignerAddress(digest, signature);
+
+        // check if signer address is owner of requestID
+        require(signerAddr == owner, "Invalid signature");
+
+        resetDeployment(signerAddr, projectId, requestID, workerAddress, base64Proposal, serverURL);
+
+        // increase nonce
+        userNonceMp[owner]++;
+    }
+
     function submitProofOfDeployment(bytes32 projectId, bytes32 requestID, string memory proofBase64)
         public
         hasProject(projectId)
     {
-        require(requestID.length > 0, "requestID is empty");
         require(requestDeploymentStatus[requestID].status != Status.Init, "requestID does not exist");
         require(requestDeploymentStatus[requestID].deployWorkerAddr == msg.sender, "Wrong worker address");
         require(requestDeploymentStatus[requestID].status != Status.GeneratedProof, "Already submitted proof");
@@ -660,8 +687,14 @@ contract BlueprintCore is EIP712, Payment {
         uint256 cost = paymentOpCostMp[tokenAddress][UPDATE_AGENT_OP];
 
         if (cost > 0) {
-            // transfer token to crestal wallet
-            payWithERC20(tokenAddress, cost, userAddress, feeCollectionWalletAddress);
+            if (tokenAddress == address(0)) {
+                require(msg.value == cost, "Native token amount mismatch");
+                // payment to fee collection wallet address with ether
+                payWithNativeToken(payable(feeCollectionWalletAddress), cost);
+            } else {
+                // payment to feeCollectionWalletAddress with token
+                payWithERC20(tokenAddress, cost, userAddress, feeCollectionWalletAddress);
+            }
         }
 
         // reset status if it is generated proof
@@ -679,7 +712,7 @@ contract BlueprintCore is EIP712, Payment {
         bytes32 projectId,
         bytes32 requestID,
         string memory updatedBase64Config
-    ) public {
+    ) public payable {
         updateWorkerDeploymentConfigCommon(tokenAddress, msg.sender, projectId, requestID, updatedBase64Config);
     }
 
@@ -689,7 +722,7 @@ contract BlueprintCore is EIP712, Payment {
         bytes32 requestID,
         string memory updatedBase64Config,
         bytes memory signature
-    ) public {
+    ) public payable {
         address owner = deploymentOwners[requestID];
         require(owner != address(0), "Invalid requestID");
 
@@ -774,17 +807,30 @@ contract BlueprintCore is EIP712, Payment {
         return whitelistUsers[userAddress] == Status.Issued || whitelistUsers[userAddress] == Status.Pickup;
     }
 
-    function userTopUp(address tokenAddress, uint256 amount) public {
+    function userTopUp(address tokenAddress, uint256 amount) public payable {
         require(amount > 0, "Amount must be greater than 0");
 
         require(paymentAddressEnableMp[tokenAddress], "Payment address is not valid");
 
-        payWithERC20(tokenAddress, amount, msg.sender, feeCollectionWalletAddress);
+        if (tokenAddress == address(0)) {
+            require(msg.value == amount, "Native token amount mismatch");
+
+            // payment to fee collection wallet address with ether
+            payWithNativeToken(payable(feeCollectionWalletAddress), amount);
+        } else {
+            // payment to feeCollectionWalletAddress with token
+            payWithERC20(tokenAddress, amount, msg.sender, feeCollectionWalletAddress);
+        }
 
         // update user top up
         userTopUpMp[msg.sender][tokenAddress] += amount;
 
         emit UserTopUp(msg.sender, feeCollectionWalletAddress, tokenAddress, amount);
+    }
+
+    // get latest deployment status
+    function getDeploymentStatus(bytes32 requestID) public view returns (Status, address) {
+        return (requestDeploymentStatus[requestID].status, requestDeploymentStatus[requestID].deployWorkerAddr);
     }
     // it is ok to expose public function to get user nonce
     // since the signature with nonce is only used for one time

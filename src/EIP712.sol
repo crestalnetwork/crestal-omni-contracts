@@ -19,6 +19,9 @@ contract EIP712 is EIP712Upgradeable {
     bytes32 public constant UPDATE_WORKER_CONFIG_TYPEHASH = keccak256(
         "UpdateWorkerConfig(address tokenAddress,bytes32 projectId,bytes32 requestID,string updatedBase64Config,uint256 nonce)"
     );
+    bytes32 public constant RESET_DEPLOYMENT_REQUEST_TYPEHASH = keccak256(
+        "ResetDeploymentRequest(bytes32 projectId,bytes32 requestID,address workerAddress,string updatedBase64Config,uint256 nonce)"
+    );
 
     function getAddress() public view returns (address) {
         (,,,, address verifyingContract,,) = eip712Domain();
@@ -108,6 +111,27 @@ contract EIP712 is EIP712Upgradeable {
                 tokenAddress,
                 projectId,
                 requestID,
+                keccak256(bytes(updatedBase64Config)),
+                nonce
+            )
+        );
+
+        return _hashTypedDataV4(structHash);
+    }
+
+    function getRequestResetDeploymentDigest(
+        bytes32 projectId,
+        bytes32 requestID,
+        address workerAddress,
+        string memory updatedBase64Config,
+        uint256 nonce
+    ) public view returns (bytes32) {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                RESET_DEPLOYMENT_REQUEST_TYPEHASH,
+                projectId,
+                requestID,
+                workerAddress,
                 keccak256(bytes(updatedBase64Config)),
                 nonce
             )
