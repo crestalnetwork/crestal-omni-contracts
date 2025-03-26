@@ -853,10 +853,6 @@ contract BlueprintCore is EIP712, Payment {
         emit UserTopUp(msg.sender, feeCollectionWalletAddress, tokenAddress, amount);
     }
 
-    function getUserNonce(address userAddress) public view returns (uint256) {
-        return userNonceMp[userAddress];
-    }
-
     // get latest deployment status
     function getDeploymentStatus(bytes32 requestID) public view returns (Status, address) {
         return (requestDeploymentStatus[requestID].status, requestDeploymentStatus[requestID].deployWorkerAddr);
