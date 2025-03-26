@@ -399,10 +399,19 @@ contract BlueprintTest is Test {
         // Mint tokens to the test account
         mockToken.mint(address(this), topUpAmount);
 
+        // check user topUp balance
+        uint256 userBalance = blueprint.userTopUpMp(address(this), address(mockToken));
+        assertEq(userBalance, 0, "User top-up amount is incorrect");
+
         // not approve blueprint to spend token
         vm.expectRevert("ERC20: transfer amount exceeds allowance");
         // Call the userTopUp function
         blueprint.userTopUp(address(mockToken), topUpAmount);
+
+        // check user topUp balance
+        userBalance = blueprint.userTopUpMp(address(this), address(mockToken));
+        assertEq(userBalance, 0, "User top-up amount is incorrect");
+
     }
 
     function test_removePaymentAddress() public {
