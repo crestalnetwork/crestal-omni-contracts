@@ -696,7 +696,6 @@ contract BlueprintCore is EIP712, Payment {
             }
         }
 
-
         emit UpdateDeploymentConfig(
             projectId, requestID, requestDeploymentStatus[requestID].deployWorkerAddr, updatedBase64Config
         );
