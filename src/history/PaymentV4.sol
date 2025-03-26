@@ -30,5 +30,4 @@ contract Payment {
         IERC20 token = IERC20(erc20TokenAddress);
         token.safeTransferFrom(fromAddress, toAddress, amount);
     }
-
 }
