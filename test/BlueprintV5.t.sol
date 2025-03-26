@@ -212,6 +212,48 @@ contract BlueprintTest is Test {
         blueprint.updateWorkerDeploymentConfig(address(mockToken), projectId, requestId, base64Proposal);
     }
 
+    function test_resetDeploymentRequestWithSig() public {
+        string memory base64Proposal = "test base64 proposal";
+        string memory serverURL = "app.crestal.network";
+        test_createAgentWithToken();
+
+        address signerAddress = vm.addr(signerPrivateKey);
+        uint256 nonce = blueprint.getUserNonce(signerAddress);
+
+        // get the latest deployment request id
+        bytes32 requestId = blueprint.getLatestDeploymentRequestID(signerAddress);
+
+        // set zero cost for create agents, use any number less than 0
+        blueprint.setUpdateCreateAgentTokenCost(address(mockToken), 0);
+        // Generate the signature
+        (bytes memory signature,) =
+            generateResetWorkerConfigSignature(projectId, requestId, workerAddress, base64Proposal, nonce);
+
+        // Expect the UpdateDeploymentConfig event
+        vm.expectEmit(true, true, true, true);
+        emit BlueprintCore.AcceptDeployment(projectId, requestId, workerAddress);
+
+        // update agent deployment config
+        blueprint.resetDeploymentRequestWithSig(
+            projectId, requestId, workerAddress, base64Proposal, serverURL, signature
+        );
+
+        // check nonce
+        uint256 newNonce = blueprint.getUserNonce(signerAddress);
+        assertEq(newNonce, nonce + 1, "nonce is not updated");
+
+        // Verify that the deployment status is updated correctly
+        (Blueprint.Status status, address workerAddr) = blueprint.getDeploymentStatus(requestId);
+        assertTrue(status == BlueprintCore.Status.Pickup);
+        assertEq(workerAddr, workerAddress);
+
+        // try again with old signature, it will fail
+        vm.expectRevert("Invalid signature");
+        blueprint.resetDeploymentRequestWithSig(
+            projectId, requestId, workerAddress, base64Proposal, serverURL, signature
+        );
+    }
+
     function test_Revert_updateWorkerDeploymentConfig() public {
         string memory base64Proposal = "test base64 proposal";
         string memory serverURL = "app.crestal.network";
@@ -439,6 +481,19 @@ contract BlueprintTest is Test {
         bytes32 digest = blueprint.getCreateAgentWithTokenDigest(
             _projectId, _base64Proposal, _serverURL, workerAddress, tokenAddress
         );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, digest);
+        return (abi.encodePacked(r, s, v), vm.addr(signerPrivateKey));
+    }
+
+    function generateResetWorkerConfigSignature(
+        bytes32 _projectId,
+        bytes32 _requestId,
+        address workerAddress,
+        string memory _base64Proposal,
+        uint256 _nonce
+    ) internal view returns (bytes memory, address) {
+        bytes32 digest =
+            blueprint.getRequestResetDeploymentDigest(_projectId, _requestId, workerAddress, _base64Proposal, _nonce);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, digest);
         return (abi.encodePacked(r, s, v), vm.addr(signerPrivateKey));
     }
