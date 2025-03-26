@@ -514,52 +514,6 @@ contract BlueprintCore is EIP712, Payment {
             createAgent(msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId, address(0));
     }
 
-    function createAgentWithWhitelistUsers(
-        bytes32 projectId,
-        string memory base64Proposal,
-        address privateWorkerAddress,
-        string memory serverURL,
-        uint256 tokenId
-    ) public returns (bytes32 requestID) {
-        // check whitelist user
-        require(whitelistUsers[msg.sender] != Status.Init, "User is not in whitelist");
-
-        // one whitelist user can only create one agent
-        require(whitelistUsers[msg.sender] != Status.Pickup, "User already created agent");
-
-        requestID =
-            createAgent(msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId, address(0));
-
-        whitelistUsers[msg.sender] = Status.Pickup;
-    }
-
-    function createAgentWithWhitelistUsersWithSig(
-        bytes32 projectId,
-        string memory base64Proposal,
-        address privateWorkerAddress,
-        string memory serverURL,
-        uint256 tokenId,
-        bytes memory signature
-    ) public returns (bytes32 requestID) {
-        // get EIP712 hash digest
-        bytes32 digest =
-            getCreateAgentWithNFTDigest(projectId, base64Proposal, serverURL, privateWorkerAddress, tokenId);
-
-        // get signer address
-        address signerAddr = getSignerAddress(digest, signature);
-
-        // check whitelist user
-        require(whitelistUsers[signerAddr] != Status.Init, "User is not in whitelist");
-
-        // one whitelist user can only create one agent
-        require(whitelistUsers[signerAddr] != Status.Pickup, "User already created agent");
-
-        requestID =
-            createAgent(signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId, address(0));
-
-        whitelistUsers[signerAddr] = Status.Pickup;
-    }
-
     function createAgentWithSigWithNFT(
         bytes32 projectId,
         string memory base64Proposal,
