@@ -828,10 +828,6 @@ contract BlueprintCore is EIP712, Payment {
         emit UserTopUp(msg.sender, feeCollectionWalletAddress, tokenAddress, amount);
     }
 
-    // get latest deployment status
-    function getDeploymentStatus(bytes32 requestID) public view returns (Status, address) {
-        return (requestDeploymentStatus[requestID].status, requestDeploymentStatus[requestID].deployWorkerAddr);
-    }
     // it is ok to expose public function to get user nonce
     // since the signature with nonce is only used for one time
     // reason make userAddress as param is that gasless flow, user can get nonce with other wallet address, not need msg.sender
