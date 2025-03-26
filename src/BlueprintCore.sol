@@ -197,13 +197,6 @@ contract BlueprintCore is EIP712, Payment {
         setProjectId(projectId, msg.sender);
     }
 
-    function upgradeProject(bytes32 projectId) public hasProject(projectId) {
-        // reset project info
-        projects[projectId].requestProposalID = 0;
-        projects[projectId].requestDeploymentID = 0;
-        projects[projectId].proposedSolverAddr = dummyAddress;
-    }
-
     function proposalRequest(
         address userAddress,
         bytes32 projectId,
