@@ -687,6 +687,9 @@ contract BlueprintCore is EIP712, Payment {
 
     // set worker public key
     function setWorkerPublicKey(bytes calldata publicKey) public {
+        require(publicKey.length > 0, "Public key cannot be empty");
+        // not set length check like 64 or 33 or others
+        // will introduce some admin function to control workers
         if (workersPublicKey[msg.sender].length == 0) {
             workerAddressesMp[WORKER_ADDRESS_KEY].push(msg.sender);
         }

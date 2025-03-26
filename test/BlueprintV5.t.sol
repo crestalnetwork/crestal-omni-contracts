@@ -322,6 +322,32 @@ contract BlueprintTest is Test {
         assertEq(setCost, cost, "Update agent token cost is incorrect");
     }
 
+    function test_setWorkerPublicKey() public {
+        // empty public key cannot be set
+        vm.expectRevert("Public key cannot be empty");
+        blueprint.setWorkerPublicKey("");
+
+        bytes memory workerPublicKey = "valid public key";
+
+        // Set the worker public key with an worker public key
+        blueprint.setWorkerPublicKey(workerPublicKey);
+
+        // Verify the public key is set correctly
+        bytes memory storedPublicKey = blueprint.getWorkerPublicKey(address(this));
+        assertEq(storedPublicKey, workerPublicKey, "public key is not set correctly");
+
+        // Verify the worker address is added to the list
+        address[] memory workerAddresses = blueprint.getWorkerAddresses();
+        bool found = false;
+        for (uint256 i = 0; i < workerAddresses.length; i++) {
+            if (workerAddresses[i] == address(this)) {
+                found = true;
+                break;
+            }
+        }
+        assertTrue(found, "Worker address should be in the list");
+    }
+
     function test_addPaymentAddress() public {
         address paymentAddress = address(mockToken);
 
