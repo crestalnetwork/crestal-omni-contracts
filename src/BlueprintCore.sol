@@ -618,6 +618,18 @@ contract BlueprintCore is EIP712, Payment {
         userNonceMp[owner]++;
     }
 
+    function checkProjectIDAndRequestID(bytes32 projectId, bytes32 requestID) internal returns (bool) {
+        // check project id and request id binding
+        (,, bytes32[] memory deploymentIds) = getProjectInfo(projectId);
+        for (uint256 i = 0; i < deploymentIds.length; i++) {
+            if (deploymentIds[i] == requestID) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     function submitProofOfDeployment(bytes32 projectId, bytes32 requestID, string memory proofBase64)
         public
         hasProject(projectId)
@@ -625,6 +637,8 @@ contract BlueprintCore is EIP712, Payment {
         require(requestDeploymentStatus[requestID].status != Status.Init, "requestID does not exist");
         require(requestDeploymentStatus[requestID].deployWorkerAddr == msg.sender, "Wrong worker address");
         require(requestDeploymentStatus[requestID].status != Status.GeneratedProof, "Already submitted proof");
+
+        require(checkProjectIDAndRequestID(projectId, requestID), "ProjectID and requestID mismatch");
 
         // check worker is trusted or not
         require(trustWorkerMp[msg.sender], "Worker is not trusted");
@@ -655,6 +669,8 @@ contract BlueprintCore is EIP712, Payment {
 
         // check worker is trusted or not
         require(trustWorkerMp[msg.sender], "Worker is not trusted");
+
+        require(checkProjectIDAndRequestID(projectId, requestID), "ProjectID and requestID mismatch");
 
         // currently, do first come, first server, will do a better way in the future
         requestDeploymentStatus[requestID].status = Status.Pickup;
