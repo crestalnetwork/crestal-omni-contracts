@@ -5,9 +5,6 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./BlueprintCore.sol";
 
 contract Blueprint is OwnableUpgradeable, BlueprintCore {
-    address public workerAdmin;
-    address public defaultWorker;
-
     event PaymentAddressAdded(address paymentAddress);
     event CreateAgentTokenCost(address paymentAddress, uint256 cost);
     event UpdateAgentTokenCost(address paymentAddress, uint256 cost);
@@ -15,6 +12,12 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
     event FeeCollectionWalletAddress(address feeCollectionWalletAddress);
     event SetWorkerAdmin(address workerAdmin);
     event UpdateWorker(address workerAddress, bool isTrusted);
+
+    modifier isAdmin() {
+        // slither-disable-next-line timestamp
+        require(msg.sender == workerAdmin, "Not an admin");
+        _;
+    }
 
     // slither-disable-next-line naming-convention
     function setNFTContractAddress(address _nftContractAddress) public onlyOwner {
@@ -101,8 +104,7 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
         emit SetWorkerAdmin(_workerAdmin);
     }
 
-    function updateWorker(address workerAddress, bool isTrusted) public {
-        require(msg.sender == workerAdmin, "Only worker admin can update worker");
+    function updateWorker(address workerAddress, bool isTrusted) public isAdmin {
         require(workerAddress != address(0), "Worker address is invalid");
         // default worker cannot be updated
         require(workerAddress != defaultWorker, "Default worker cannot be updated");
