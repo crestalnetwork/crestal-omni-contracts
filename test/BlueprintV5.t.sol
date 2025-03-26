@@ -411,7 +411,6 @@ contract BlueprintTest is Test {
         // check user topUp balance
         userBalance = blueprint.userTopUpMp(address(this), address(mockToken));
         assertEq(userBalance, 0, "User top-up amount is incorrect");
-
     }
 
     function test_removePaymentAddress() public {
