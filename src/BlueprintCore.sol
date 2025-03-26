@@ -102,7 +102,6 @@ contract BlueprintCore is EIP712, Payment {
 
     // worker management related variables
     address public workerAdmin;
-    address public defaultWorker;
     mapping(address => bool) public trustWorkerMp;
 
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);

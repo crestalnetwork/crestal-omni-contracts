@@ -106,8 +106,6 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
 
     function updateWorker(address workerAddress, bool isTrusted) public isAdmin {
         require(workerAddress != address(0), "Worker address is invalid");
-        // default worker cannot be updated
-        require(workerAddress != defaultWorker, "Default worker cannot be updated");
 
         trustWorkerMp[workerAddress] = isTrusted;
 
