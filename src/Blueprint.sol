@@ -15,7 +15,7 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
 
     modifier isAdmin() {
         // slither-disable-next-line timestamp
-        require(msg.sender == workerAdmin, "Not an admin");
+        require(msg.sender == workerAdmin || msg.sender == owner(), "Not an admin or owner");
         _;
     }
 

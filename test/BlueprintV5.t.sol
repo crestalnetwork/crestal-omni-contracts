@@ -535,7 +535,6 @@ contract BlueprintTest is Test {
         blueprint.submitDeploymentRequest(projectId, deploymentRequestId);
 
         // set worker as trusted
-        blueprint.setWorkerAdmin(address(this));
         blueprint.updateWorker(address(this), true);
 
         // worker submit request
