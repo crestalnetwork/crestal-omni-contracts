@@ -565,6 +565,22 @@ contract BlueprintTest is Test {
         string memory deploymentProof = blueprint.getDeploymentProof(deploymentRequestId);
 
         assertEq(proof, deploymentProof);
+
+        // project id and request id not match case
+        bytes32 newProjectId = bytes32(0x2723a34e38d0f0aa09ce626f00aa23c0464b52c75516cf3203cc4c9afeaf2988);
+        bytes32 newDeploymentRequestId =
+            blueprint.createProjectIDAndDeploymentRequest(newProjectId, "test base64 param", "test server url");
+
+        assertNotEq(newProjectId, projectId);
+        vm.expectRevert("ProjectID and requestID mismatch");
+        blueprint.submitDeploymentRequest(projectId, newDeploymentRequestId);
+
+        // submit request
+        blueprint.submitDeploymentRequest(newProjectId, newDeploymentRequestId);
+
+        // project id not match with request for submit proof
+        vm.expectRevert("ProjectID and requestID mismatch");
+        blueprint.submitProofOfDeployment(projectId, newDeploymentRequestId, proof);
     }
 
     function generateUpdateWorkerConfigSignature(
