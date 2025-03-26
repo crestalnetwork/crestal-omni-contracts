@@ -31,11 +31,4 @@ contract Payment {
         token.safeTransferFrom(fromAddress, toAddress, amount);
     }
 
-    function payWithNativeToken(address payable toAddress, uint256 amount) internal {
-        require(toAddress != address(0), "Invalid to address");
-        require(amount > 0, "Amount must be greater than 0");
-
-        (bool success,) = toAddress.call{value: amount}("");
-        require(success, "Native token transfer failed");
-    }
 }
