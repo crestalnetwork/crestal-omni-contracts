@@ -10,6 +10,14 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
     event UpdateAgentTokenCost(address paymentAddress, uint256 cost);
     event RemovePaymentAddress(address paymentAddress);
     event FeeCollectionWalletAddress(address feeCollectionWalletAddress);
+    event SetWorkerAdmin(address workerAdmin);
+    event UpdateWorker(address workerAddress, bool isTrusted);
+
+    modifier isAdmin() {
+        // slither-disable-next-line timestamp
+        require(msg.sender == workerAdmin, "Not an admin");
+        _;
+    }
 
     // slither-disable-next-line naming-convention
     function setNFTContractAddress(address _nftContractAddress) public onlyOwner {
@@ -80,5 +88,20 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
         feeCollectionWalletAddress = _feeCollectionWalletAddress;
 
         emit FeeCollectionWalletAddress(_feeCollectionWalletAddress);
+    }
+
+    function setWorkerAdmin(address _workerAdmin) public onlyOwner {
+        require(_workerAdmin != address(0), "Worker Admin is invalid");
+        workerAdmin = _workerAdmin;
+
+        emit SetWorkerAdmin(_workerAdmin);
+    }
+
+    function updateWorker(address workerAddress, bool isTrusted) public isAdmin {
+        require(workerAddress != address(0), "Worker address is invalid");
+
+        trustWorkerMp[workerAddress] = isTrusted;
+
+        emit UpdateWorker(workerAddress, isTrusted);
     }
 }

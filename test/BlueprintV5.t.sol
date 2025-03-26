@@ -518,6 +518,48 @@ contract BlueprintTest is Test {
         assertTrue(found, "Payment address should be in the list");
     }
 
+    function test_submitProofOfDeployment() public {
+        bytes32 deploymentRequestId =
+            blueprint.createProjectIDAndDeploymentRequest(projectId, "test base64 param", "test server url");
+
+        // should get not trust worker rever
+        vm.expectRevert("Worker is not trusted");
+        blueprint.submitDeploymentRequest(projectId, deploymentRequestId);
+
+        // set worker as trusted
+        blueprint.setWorkerAdmin(address(this));
+        blueprint.updateWorker(address(this), true);
+
+        // worker submit request
+        bool isAccept = blueprint.submitDeploymentRequest(projectId, deploymentRequestId);
+
+        assertEq(isAccept, true);
+
+        // submit proof
+        string memory proof = "deployment proof";
+
+        // update worker as not trusted
+        blueprint.updateWorker(address(this), false);
+        vm.expectRevert("Worker is not trusted");
+        blueprint.submitProofOfDeployment(projectId, deploymentRequestId, proof);
+
+        // update worker as trusted
+        blueprint.updateWorker(address(this), true);
+
+        blueprint.submitProofOfDeployment(projectId, deploymentRequestId, proof);
+
+        (Blueprint.Status status, address pickUpWorkerAddr) = blueprint.getDeploymentStatus(deploymentRequestId);
+
+        assertEq(address(this), pickUpWorkerAddr);
+
+        assertTrue(status == BlueprintCore.Status.GeneratedProof);
+
+        // check proof
+        string memory deploymentProof = blueprint.getDeploymentProof(deploymentRequestId);
+
+        assertEq(proof, deploymentProof);
+    }
+
     function generateUpdateWorkerConfigSignature(
         address _tokenAddress,
         bytes32 _projectId,

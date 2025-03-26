@@ -100,6 +100,10 @@ contract BlueprintCore is EIP712, Payment {
 
     mapping(address => uint256) private userNonceMp;
 
+    // worker management related variables
+    address public workerAdmin;
+    mapping(address => bool) public trustWorkerMp;
+
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);
     event RequestProposal(
         bytes32 indexed projectID,
@@ -622,6 +626,9 @@ contract BlueprintCore is EIP712, Payment {
         require(requestDeploymentStatus[requestID].deployWorkerAddr == msg.sender, "Wrong worker address");
         require(requestDeploymentStatus[requestID].status != Status.GeneratedProof, "Already submitted proof");
 
+        // check worker is trusted or not
+        require(trustWorkerMp[msg.sender], "Worker is not trusted");
+
         // set deployment status into generatedProof
         requestDeploymentStatus[requestID].status = Status.GeneratedProof;
 
@@ -636,7 +643,6 @@ contract BlueprintCore is EIP712, Payment {
         hasProject(projectId)
         returns (bool isAccepted)
     {
-        require(requestID.length > 0, "requestID is empty");
         require(requestDeploymentStatus[requestID].status != Status.Init, "requestID does not exist");
         require(
             requestDeploymentStatus[requestID].status != Status.Pickup,
@@ -646,6 +652,9 @@ contract BlueprintCore is EIP712, Payment {
         require(
             requestDeploymentStatus[requestID].status != Status.GeneratedProof, "requestID has already submitted proof"
         );
+
+        // check worker is trusted or not
+        require(trustWorkerMp[msg.sender], "Worker is not trusted");
 
         // currently, do first come, first server, will do a better way in the future
         requestDeploymentStatus[requestID].status = Status.Pickup;
@@ -819,15 +828,16 @@ contract BlueprintCore is EIP712, Payment {
         emit UserTopUp(msg.sender, feeCollectionWalletAddress, tokenAddress, amount);
     }
 
-    // get latest deployment status
-    function getDeploymentStatus(bytes32 requestID) public view returns (Status, address) {
-        return (requestDeploymentStatus[requestID].status, requestDeploymentStatus[requestID].deployWorkerAddr);
-    }
     // it is ok to expose public function to get user nonce
     // since the signature with nonce is only used for one time
     // reason make userAddress as param is that gasless flow, user can get nonce with other wallet address, not need msg.sender
 
     function getUserNonce(address userAddress) public view returns (uint256) {
         return userNonceMp[userAddress];
+    }
+
+    // get latest deployment status
+    function getDeploymentStatus(bytes32 requestID) public view returns (Status, address) {
+        return (requestDeploymentStatus[requestID].status, requestDeploymentStatus[requestID].deployWorkerAddr);
     }
 }
