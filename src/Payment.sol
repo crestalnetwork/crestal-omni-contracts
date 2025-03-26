@@ -30,4 +30,13 @@ contract Payment {
         IERC20 token = IERC20(erc20TokenAddress);
         token.safeTransferFrom(fromAddress, toAddress, amount);
     }
+
+    function payWithNativeToken(address payable toAddress, uint256 amount) internal {
+        require(toAddress != address(0), "Invalid to address");
+        require(amount > 0, "Amount must be greater than 0");
+        require(address(this).balance >= amount, "Insufficient balance");
+
+        (bool success,) = toAddress.call{value: amount}("");
+        require(success, "Native token transfer failed");
+    }
 }

@@ -89,6 +89,31 @@ contract BlueprintTest is Test {
         // check balance after creation, it should be balance - cost
         balance = mockToken.balanceOf(address(this));
         assertEq(balance, 0, "signer does not have the correct token balance after creation");
+
+        // test eth native token to create agent
+        // Add the payment address for eth
+        blueprint.addPaymentAddress(address(0));
+        // set cost for create agents, use any number greater than 0
+        blueprint.setCreateAgentTokenCost(address(0), 1 ether);
+
+        // mint 1 eth to test account
+        vm.deal(address(this), 1 ether);
+
+        // mock the call to simulate a successful transfer
+        vm.mockCall(
+            address(blueprint.feeCollectionWalletAddress()),
+            abi.encodeWithSelector(bytes4(keccak256("call(bytes)")), ""),
+            abi.encode(true)
+        );
+
+        // create agent with eth
+        // try with different project id
+        projectId = bytes32(0x2723a34e38d0f0aa09ce626f00aa23c0464b52c75516cf3203cc4c9afeaf2989);
+        blueprint.createAgentWithToken{value: 1 ether}(projectId, base64Proposal, workerAddress, serverURL, address(0));
+
+        // check fee collection wallet balance
+        balance = blueprint.feeCollectionWalletAddress().balance;
+        assertEq(balance, 1 ether, "fee collection wallet balance is incorrect");
     }
 
     function test_Revert_createAgentWithToken() public {
@@ -129,6 +154,21 @@ contract BlueprintTest is Test {
         vm.expectRevert("ERC20: transfer amount exceeds allowance");
         blueprint.createAgentWithToken(
             projectId, "test base64 proposal", workerAddress, "http://example.com", address(mockToken)
+        );
+
+        // test eth native token to create agent
+        // Add the payment address for eth
+        blueprint.addPaymentAddress(address(0));
+        // set cost for create agents, use any number greater than 0
+        blueprint.setCreateAgentTokenCost(address(0), 1 ether);
+
+        // create agent with eth
+        // try with different project id
+        // revert with transfer fail because no enough eth
+        vm.expectRevert("Native token amount mismatch");
+        projectId = bytes32(0x2723a34e38d0f0aa09ce626f00aa23c0464b52c75516cf3203cc4c9afeaf2989);
+        blueprint.createAgentWithToken(
+            projectId, "test base64 proposal", workerAddress, "http://example.com", address(0)
         );
     }
 
@@ -328,6 +368,26 @@ contract BlueprintTest is Test {
         // verify user balance after top up
         uint256 balance = mockToken.balanceOf(address(this));
         assertEq(balance, 0, "sender does not have the correct token balance after top up");
+
+        // Add the payment address for eth
+        blueprint.addPaymentAddress(address(0));
+
+        topUpAmount = 1 ether;
+
+        // Expect the UserTopUp event
+        vm.expectEmit(true, true, true, true);
+        emit BlueprintCore.UserTopUp(address(this), blueprint.feeCollectionWalletAddress(), address(0), topUpAmount);
+
+        // Call the userTopUp function with native token
+        blueprint.userTopUp{value: topUpAmount}(address(0), topUpAmount);
+
+        // Verify the native token transfer
+        uint256 blueprintEthBalance = blueprint.feeCollectionWalletAddress().balance;
+        assertEq(blueprintEthBalance, topUpAmount, "Blueprint fee collection wallet balance is incorrect");
+
+        // Verify the top-up amount
+        userBalance = blueprint.userTopUpMp(address(this), address(0));
+        assertEq(userBalance, topUpAmount, "User top-up amount is incorrect");
     }
 
     function test_Revert_userTopUp() public {

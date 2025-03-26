@@ -435,7 +435,7 @@ contract BlueprintCore is EIP712, Payment {
         uint256 tokenId,
         address tokenAddress
     ) internal returns (bytes32 requestID) {
-        if (tokenAddress == address(0)) {
+        if (tokenAddress == address(0) && tokenId > 0) {
             // create agent with nft
             // check NFT token id is already used or not
             require(nftTokenIdMap[tokenId] != Status.Pickup, "NFT token id already used");
@@ -462,8 +462,14 @@ contract BlueprintCore is EIP712, Payment {
             // get cost of create agent operation
             uint256 cost = paymentOpCostMp[tokenAddress][CREATE_AGENT_OP];
             if (cost > 0) {
-                // payment to crestal wallet address with token
-                payWithERC20(tokenAddress, cost, userAddress, feeCollectionWalletAddress);
+                if (tokenAddress == address(0)) {
+                    require(msg.value == cost, "Native token amount mismatch");
+                    // payment to fee collection wallet address with ether
+                    payWithNativeToken(payable(feeCollectionWalletAddress), cost);
+                } else {
+                    // payment to feeCollectionWalletAddress with token
+                    payWithERC20(tokenAddress, cost, userAddress, feeCollectionWalletAddress);
+                }
             }
 
             requestID = createCommonProjectIDAndDeploymentRequest(
@@ -484,9 +490,7 @@ contract BlueprintCore is EIP712, Payment {
         address privateWorkerAddress,
         string memory serverURL,
         address tokenAddress
-    ) public returns (bytes32 requestID) {
-        require(tokenAddress != address(0), "Token address is empty");
-
+    ) public payable returns (bytes32 requestID) {
         requestID = createAgent(msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL, 0, tokenAddress);
     }
 
@@ -497,9 +501,7 @@ contract BlueprintCore is EIP712, Payment {
         string memory serverURL,
         address tokenAddress,
         bytes memory signature
-    ) public returns (bytes32 requestID) {
-        require(tokenAddress != address(0), "Token address is empty");
-
+    ) public payable returns (bytes32 requestID) {
         // get EIP712 hash digest
         bytes32 digest =
             getCreateAgentWithTokenDigest(projectId, base64Proposal, serverURL, privateWorkerAddress, tokenAddress);
@@ -729,8 +731,14 @@ contract BlueprintCore is EIP712, Payment {
         uint256 cost = paymentOpCostMp[tokenAddress][UPDATE_AGENT_OP];
 
         if (cost > 0) {
-            // transfer token to crestal wallet
-            payWithERC20(tokenAddress, cost, userAddress, feeCollectionWalletAddress);
+            if (tokenAddress == address(0)) {
+                require(msg.value == cost, "Native token amount mismatch");
+                // payment to fee collection wallet address with ether
+                payWithNativeToken(payable(feeCollectionWalletAddress), cost);
+            } else {
+                // payment to feeCollectionWalletAddress with token
+                payWithERC20(tokenAddress, cost, userAddress, feeCollectionWalletAddress);
+            }
         }
 
         // reset status if it is generated proof
@@ -748,7 +756,7 @@ contract BlueprintCore is EIP712, Payment {
         bytes32 projectId,
         bytes32 requestID,
         string memory updatedBase64Config
-    ) public {
+    ) public payable {
         updateWorkerDeploymentConfigCommon(tokenAddress, msg.sender, projectId, requestID, updatedBase64Config);
     }
 
@@ -758,7 +766,7 @@ contract BlueprintCore is EIP712, Payment {
         bytes32 requestID,
         string memory updatedBase64Config,
         bytes memory signature
-    ) public {
+    ) public payable {
         address owner = deploymentOwners[requestID];
         require(owner != address(0), "Invalid requestID");
 
@@ -843,12 +851,20 @@ contract BlueprintCore is EIP712, Payment {
         return whitelistUsers[userAddress] == Status.Issued || whitelistUsers[userAddress] == Status.Pickup;
     }
 
-    function userTopUp(address tokenAddress, uint256 amount) public {
+    function userTopUp(address tokenAddress, uint256 amount) public payable {
         require(amount > 0, "Amount must be greater than 0");
 
         require(paymentAddressEnableMp[tokenAddress], "Payment address is not valid");
 
-        payWithERC20(tokenAddress, amount, msg.sender, feeCollectionWalletAddress);
+        if (tokenAddress == address(0)) {
+            require(msg.value == amount, "Native token amount mismatch");
+
+            // payment to fee collection wallet address with ether
+            payWithNativeToken(payable(feeCollectionWalletAddress), amount);
+        } else {
+            // payment to feeCollectionWalletAddress with token
+            payWithERC20(tokenAddress, amount, msg.sender, feeCollectionWalletAddress);
+        }
 
         // update user top up
         userTopUpMp[msg.sender][tokenAddress] += amount;
