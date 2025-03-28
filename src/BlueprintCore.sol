@@ -223,8 +223,9 @@ contract BlueprintCore is EIP712, Payment {
         require(projects[projectId].requestDeploymentID == 0, "deployment requestID already exists");
 
         // generate unique deployment requestID message hash
-        requestID =
-            keccak256(abi.encodePacked(block.timestamp, userAddress, base64Proposal, block.chainid, projectId, index));
+        requestID = keccak256(
+            abi.encodePacked(block.timestamp, userAddress, base64Proposal, block.chainid, projectId, index, serverURL)
+        );
 
         latestDeploymentRequestID[userAddress] = requestID;
 

@@ -50,10 +50,24 @@ contract BlueprintTest is Test {
         vm.expectEmit(true, false, true, true);
         emit BlueprintCore.CreateAgent(projectId, "fake", signerAddress, 0, 0);
 
+        bytes32 expectedRequestId = keccak256(
+            abi.encodePacked(
+                uint256(block.timestamp),
+                signerAddress,
+                base64Proposal,
+                uint256(block.chainid),
+                projectId,
+                uint256(0),
+                serverURL
+            )
+        );
+
         // Create agent with token
-        blueprint.createAgentWithTokenWithSig(
+        bytes32 requestId = blueprint.createAgentWithTokenWithSig(
             projectId, base64Proposal, workerAddress, serverURL, address(mockToken), signature
         );
+
+        assertEq(expectedRequestId, requestId);
 
         bytes32 latestProjId = blueprint.getLatestUserProjectID(signerAddress);
         assertEq(projectId, latestProjId);
