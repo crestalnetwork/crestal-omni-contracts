@@ -224,7 +224,7 @@ contract BlueprintCore is EIP712, Payment {
 
         // generate unique deployment requestID message hash
         requestID =
-            keccak256(abi.encodePacked(block.timestamp, userAddress, base64Proposal, block.chainid, projectId, index));
+            keccak256(abi.encodePacked(block.timestamp, userAddress, base64Proposal, block.chainid, projectId, index,serverURL));
 
         latestDeploymentRequestID[userAddress] = requestID;
 
