@@ -52,7 +52,13 @@ contract BlueprintTest is Test {
 
         bytes32 expectedRequestId = keccak256(
             abi.encodePacked(
-                uint256(block.timestamp),signerAddress, base64Proposal, uint256(block.chainid), projectId,uint256(0),serverURL
+                uint256(block.timestamp),
+                signerAddress,
+                base64Proposal,
+                uint256(block.chainid),
+                projectId,
+                uint256(0),
+                serverURL
             )
         );
 
