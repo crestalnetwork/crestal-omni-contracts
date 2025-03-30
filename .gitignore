@@ -12,6 +12,7 @@ docs/
 
 # Dotenv file
 .env*
+*.csv
 
 # NPM
 node_modules/

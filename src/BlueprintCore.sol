@@ -178,6 +178,11 @@ contract BlueprintCore is EIP712, Payment {
         _;
     }
 
+    modifier isTrustedWorker() {
+        require(trustWorkerMp[msg.sender], "Worker is not trusted");
+        _;
+    }
+
     function setProjectId(bytes32 projectId, address userAddr) internal newProject(projectId) {
         require(userAddr != dummyAddress, "Invalid userAddr");
 
@@ -558,15 +563,13 @@ contract BlueprintCore is EIP712, Payment {
     function submitProofOfDeployment(bytes32 projectId, bytes32 requestID, string memory proofBase64)
         public
         hasProject(projectId)
+        isTrustedWorker
     {
         require(requestDeploymentStatus[requestID].status != Status.Init, "requestID does not exist");
         require(requestDeploymentStatus[requestID].deployWorkerAddr == msg.sender, "Wrong worker address");
         require(requestDeploymentStatus[requestID].status != Status.GeneratedProof, "Already submitted proof");
 
         require(checkProjectIDAndRequestID(projectId, requestID), "ProjectID and requestID mismatch");
-
-        // check worker is trusted or not
-        require(trustWorkerMp[msg.sender], "Worker is not trusted");
 
         // set deployment status into generatedProof
         requestDeploymentStatus[requestID].status = Status.GeneratedProof;
@@ -580,6 +583,7 @@ contract BlueprintCore is EIP712, Payment {
     function submitDeploymentRequest(bytes32 projectId, bytes32 requestID)
         public
         hasProject(projectId)
+        isTrustedWorker
         returns (bool isAccepted)
     {
         require(requestDeploymentStatus[requestID].status != Status.Init, "requestID does not exist");
@@ -591,9 +595,6 @@ contract BlueprintCore is EIP712, Payment {
         require(
             requestDeploymentStatus[requestID].status != Status.GeneratedProof, "requestID has already submitted proof"
         );
-
-        // check worker is trusted or not
-        require(trustWorkerMp[msg.sender], "Worker is not trusted");
 
         require(checkProjectIDAndRequestID(projectId, requestID), "ProjectID and requestID mismatch");
 
@@ -684,8 +685,12 @@ contract BlueprintCore is EIP712, Payment {
     }
 
     // set worker public key
-    function setWorkerPublicKey(bytes calldata publicKey) public {
+    function setWorkerPublicKey(bytes calldata publicKey)
+        isTrustedWorker
+        public
+    {
         require(publicKey.length > 0, "Public key cannot be empty");
+
         // not set length check like 64 or 33 or others
         // will introduce some admin function to control workers
         if (workersPublicKey[msg.sender].length == 0) {
@@ -696,7 +701,10 @@ contract BlueprintCore is EIP712, Payment {
     }
 
     // get worker public key
-    function getWorkerPublicKey(address workerAddress) external view returns (bytes memory publicKey) {
+    function getWorkerPublicKey(address workerAddress)
+        isTrustedWorker
+        external view returns (bytes memory publicKey)
+    {
         publicKey = workersPublicKey[workerAddress];
     }
 
