@@ -702,7 +702,6 @@ contract BlueprintCore is EIP712, Payment {
 
     // get worker public key
     function getWorkerPublicKey(address workerAddress)
-        isTrustedWorker
         external view returns (bytes memory publicKey)
     {
         publicKey = workersPublicKey[workerAddress];
