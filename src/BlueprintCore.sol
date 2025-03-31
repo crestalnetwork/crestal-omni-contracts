@@ -685,10 +685,7 @@ contract BlueprintCore is EIP712, Payment {
     }
 
     // set worker public key
-    function setWorkerPublicKey(bytes calldata publicKey)
-        isTrustedWorker
-        public
-    {
+    function setWorkerPublicKey(bytes calldata publicKey) public isTrustedWorker {
         require(publicKey.length > 0, "Public key cannot be empty");
 
         // not set length check like 64 or 33 or others
@@ -701,9 +698,7 @@ contract BlueprintCore is EIP712, Payment {
     }
 
     // get worker public key
-    function getWorkerPublicKey(address workerAddress)
-        external view returns (bytes memory publicKey)
-    {
+    function getWorkerPublicKey(address workerAddress) external view returns (bytes memory publicKey) {
         publicKey = workersPublicKey[workerAddress];
     }
 
@@ -715,7 +710,7 @@ contract BlueprintCore is EIP712, Payment {
     // reset previous unclean workers
     function resetWorkerAddresses() internal {
         address[] memory addrs = getWorkerAddresses();
-        for (uint i = 0; i < addrs.length; i++) {
+        for (uint256 i = 0; i < addrs.length; i++) {
             delete workersPublicKey[addrs[i]];
         }
         delete workerAddressesMp[WORKER_ADDRESS_KEY];
