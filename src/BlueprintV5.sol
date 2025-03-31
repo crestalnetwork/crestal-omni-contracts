@@ -17,12 +17,6 @@ contract BlueprintV5 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Blue
         VERSION = "5.0.0";
         __EIP712_init(SIGNING_DOMAIN, VERSION);
         __UUPSUpgradeable_init();
-
-        address[] memory addrs = getWorkerAddresses();
-        for (uint i = 0; i < addrs.length; i++) {
-            delete workersPublicKey(addrs[i]);
-        }
-        delete workersAddressesMp[WORKER_ADDRESS_KEY];
     }
 
     // The _authorizeUpgrade function is required by the UUPSUpgradeable contract

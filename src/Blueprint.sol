@@ -104,4 +104,9 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
 
         emit UpdateWorker(workerAddress, isTrusted);
     }
+
+    // reset previous unclean workers
+    function resetWorkers() public isAdmin {
+        resetWorkerAddresses();
+    }
 }

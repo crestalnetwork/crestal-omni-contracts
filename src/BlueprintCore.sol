@@ -713,6 +713,15 @@ contract BlueprintCore is EIP712, Payment {
         return workerAddressesMp[WORKER_ADDRESS_KEY];
     }
 
+    // reset previous unclean workers
+    function resetWorkerAddresses() internal {
+        address[] memory addrs = getWorkerAddresses();
+        for (uint i = 0; i < addrs.length; i++) {
+            delete workersPublicKey[addrs[i]];
+        }
+        delete workerAddressesMp[WORKER_ADDRESS_KEY];
+    }
+
     // get list of payment addresses
     function getPaymentAddresses() public view returns (address[] memory) {
         return paymentAddressesMp[PAYMENT_KEY];
