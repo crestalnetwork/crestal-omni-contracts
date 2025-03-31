@@ -488,6 +488,12 @@ contract BlueprintTest is Test {
     }
 
     function test_setWorkerPublicKey() public {
+        vm.expectRevert("Worker is not trusted");
+        blueprint.setWorkerPublicKey("valid public key");
+
+        // set worker as trusted
+        blueprint.updateWorker(address(this), true);
+
         // empty public key cannot be set
         vm.expectRevert("Public key cannot be empty");
         blueprint.setWorkerPublicKey("");
