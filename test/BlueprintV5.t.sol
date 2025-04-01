@@ -188,7 +188,7 @@ contract BlueprintTest is Test {
 
     function test_updateWorkerDeploymentConfigWithSig() public {
         string memory base64Proposal = "test base64 proposal";
-        string memory serverURL = "app.crestal.network";
+        //string memory serverURL = "app.crestal.network";
         test_createAgentWithToken();
 
         address signerAddress = vm.addr(signerPrivateKey);
@@ -620,11 +620,11 @@ contract BlueprintTest is Test {
         bytes32 _projectId,
         string memory _base64Proposal,
         string memory _serverURL,
-        address workerAddress,
+        address _workerAddress,
         address tokenAddress
     ) internal view returns (bytes memory, address) {
         bytes32 digest = blueprint.getCreateAgentWithTokenDigest(
-            _projectId, _base64Proposal, _serverURL, workerAddress, tokenAddress
+            _projectId, _base64Proposal, _serverURL, _workerAddress, tokenAddress
         );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, digest);
         return (abi.encodePacked(r, s, v), vm.addr(signerPrivateKey));
@@ -633,12 +633,12 @@ contract BlueprintTest is Test {
     function generateResetWorkerConfigSignature(
         bytes32 _projectId,
         bytes32 _requestId,
-        address workerAddress,
+        address _workerAddress,
         string memory _base64Proposal,
         uint256 _nonce
     ) internal view returns (bytes memory, address) {
         bytes32 digest =
-            blueprint.getRequestResetDeploymentDigest(_projectId, _requestId, workerAddress, _base64Proposal, _nonce);
+            blueprint.getRequestResetDeploymentDigest(_projectId, _requestId, _workerAddress, _base64Proposal, _nonce);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, digest);
         return (abi.encodePacked(r, s, v), vm.addr(signerPrivateKey));
     }
