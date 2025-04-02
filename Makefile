@@ -4,7 +4,7 @@ ifdef ENV_FILE
 include $(ENV_FILE)
 endif
 
-LATEST ?= V4
+LATEST ?= V5
 RPC_URL ?= http://127.0.0.1:8545
 UPGRADE_TO ?= $(LATEST)
 
