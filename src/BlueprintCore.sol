@@ -553,9 +553,23 @@ contract BlueprintCore is EIP712, Payment {
         userNonceMp[owner]++;
     }
 
-    function checkProjectIDAndRequestID(bytes32 projectId, bytes32 requestID) internal view returns (bool) {
+    function checkProjectIDAndRequestID(bytes32 projectId, bytes32 requestID) internal returns (bool) {
         // check project id and request id binding
-        return requestIDToProjectID[requestID] == projectId;
+        if (requestIDToProjectID[requestID] != projectId) {
+            // check project id and request id binding
+            (,, bytes32[] memory deploymentIds) = getProjectInfo(projectId);
+            for (uint256 i = 0; i < deploymentIds.length; i++) {
+                if (deploymentIds[i] == requestID) {
+                    // build project id to request id mapping for old project id
+                    requestIDToProjectID[requestID] = projectId;
+                    return true;
+                }
+            }
+        } else {
+            return true;
+        }
+
+        return false;
     }
 
     function submitProofOfDeployment(bytes32 projectId, bytes32 requestID, string memory proofBase64)
