@@ -1,4 +1,4 @@
-.PHONY: abi deploy upgrade whitelist check slither mythril
+.PHONY: abi deploy upgrade whitelist fee-wallet update-worker update-payment check slither mythril
 
 ifdef ENV_FILE
 include $(ENV_FILE)
@@ -19,6 +19,15 @@ upgrade:
 
 whitelist:
 	PROXY_ADDRESS=$(PROXY_ADDRESS) forge script ./script/UpdateWhitelist.s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
+
+fee-wallet:
+	PROXY_ADDRESS=$(PROXY_ADDRESS) forge script ./script/SetFeeCollectionWallet.s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
+
+update-worker:
+	PROXY_ADDRESS=$(PROXY_ADDRESS) forge script ./script/UpdateWorker.s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
+
+update-payment:
+	PROXY_ADDRESS=$(PROXY_ADDRESS) forge script ./script/UpdatePayment.s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
 
 check:
 	cast call --rpc-url $(RPC_URL) $(PROXY_ADDRESS) "VERSION()(string)"
