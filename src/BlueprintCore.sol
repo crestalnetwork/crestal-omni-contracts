@@ -554,9 +554,10 @@ contract BlueprintCore is EIP712, Payment {
     }
 
     function checkProjectIDAndRequestID(bytes32 projectId, bytes32 requestID) internal returns (bool) {
-        // check project id and request id binding
+        // requestIDToProjectID is newly added mapping so we need to rebuild this mapping for old project id
+        // check new project id and request id binding
         if (requestIDToProjectID[requestID] != projectId) {
-            // check project id and request id binding
+            // check old project id and request id binding
             (,, bytes32[] memory deploymentIds) = getProjectInfo(projectId);
             for (uint256 i = 0; i < deploymentIds.length; i++) {
                 if (deploymentIds[i] == requestID) {
