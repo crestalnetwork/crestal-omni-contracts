@@ -103,6 +103,8 @@ contract BlueprintCore is EIP712, Payment {
     // worker management related variables
     address public workerAdmin;
     mapping(address => bool) public trustWorkerMp;
+    // deployment request id to project id mapping
+    mapping(bytes32 => bytes32) public requestIDToProjectID;
 
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);
     event RequestProposal(
@@ -303,6 +305,9 @@ contract BlueprintCore is EIP712, Payment {
         projects[projectId].requestDeploymentID = projectDeploymentId;
 
         deploymentIdList[projectDeploymentId].push(requestID);
+
+        // add requestID to projectID mapping
+        requestIDToProjectID[requestID] = projectId;
 
         if (workerAddress == dummyAddress) {
             emit RequestDeployment(projectId, userAddress, dummyAddress, requestID, base64Proposal, serverURL);
@@ -550,14 +555,7 @@ contract BlueprintCore is EIP712, Payment {
 
     function checkProjectIDAndRequestID(bytes32 projectId, bytes32 requestID) internal view returns (bool) {
         // check project id and request id binding
-        (,, bytes32[] memory deploymentIds) = getProjectInfo(projectId);
-        for (uint256 i = 0; i < deploymentIds.length; i++) {
-            if (deploymentIds[i] == requestID) {
-                return true;
-            }
-        }
-
-        return false;
+        return requestIDToProjectID[requestID] == projectId;
     }
 
     function submitProofOfDeployment(bytes32 projectId, bytes32 requestID, string memory proofBase64)
