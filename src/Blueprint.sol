@@ -10,6 +10,14 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
     event UpdateAgentTokenCost(address paymentAddress, uint256 cost);
     event RemovePaymentAddress(address paymentAddress);
     event FeeCollectionWalletAddress(address feeCollectionWalletAddress);
+    event SetWorkerAdmin(address workerAdmin);
+    event UpdateWorker(address workerAddress, bool isTrusted);
+
+    modifier isAdmin() {
+        // slither-disable-next-line timestamp
+        require(msg.sender == workerAdmin || msg.sender == owner(), "Not an admin or owner");
+        _;
+    }
 
     // slither-disable-next-line naming-convention
     function setNFTContractAddress(address _nftContractAddress) public onlyOwner {
@@ -44,7 +52,6 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
     }
 
     function addPaymentAddress(address paymentAddress) public onlyOwner {
-        require(paymentAddress != address(0), "Payment Address is invalid");
         paymentAddressesMp[PAYMENT_KEY].push(paymentAddress);
         paymentAddressEnableMp[paymentAddress] = true;
 
@@ -52,8 +59,6 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
     }
 
     function setCreateAgentTokenCost(address paymentAddress, uint256 cost) public onlyOwner {
-        require(paymentAddress != address(0), "Payment Address is invalid");
-
         require(paymentAddressEnableMp[paymentAddress], "Payment Address is not added");
 
         paymentOpCostMp[paymentAddress][CREATE_AGENT_OP] = cost;
@@ -62,8 +67,6 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
     }
 
     function setUpdateCreateAgentTokenCost(address paymentAddress, uint256 cost) public onlyOwner {
-        require(paymentAddress != address(0), "Payment Address is invalid");
-
         require(paymentAddressEnableMp[paymentAddress], "Payment Address is not added");
 
         paymentOpCostMp[paymentAddress][UPDATE_AGENT_OP] = cost;
@@ -72,8 +75,6 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
     }
 
     function removePaymentAddress(address paymentAddress) public onlyOwner {
-        require(paymentAddress != address(0), "Payment Address is invalid");
-
         require(paymentAddressEnableMp[paymentAddress], "Payment Address is not added");
 
         // soft remove
@@ -87,5 +88,25 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
         feeCollectionWalletAddress = _feeCollectionWalletAddress;
 
         emit FeeCollectionWalletAddress(_feeCollectionWalletAddress);
+    }
+
+    function setWorkerAdmin(address _workerAdmin) public onlyOwner {
+        require(_workerAdmin != address(0), "Worker Admin is invalid");
+        workerAdmin = _workerAdmin;
+
+        emit SetWorkerAdmin(_workerAdmin);
+    }
+
+    function updateWorker(address workerAddress, bool isTrusted) public isAdmin {
+        require(workerAddress != address(0), "Worker address is invalid");
+
+        trustWorkerMp[workerAddress] = isTrusted;
+
+        emit UpdateWorker(workerAddress, isTrusted);
+    }
+
+    // reset previous unclean workers
+    function resetWorkers() public isAdmin {
+        resetWorkerAddresses();
     }
 }
