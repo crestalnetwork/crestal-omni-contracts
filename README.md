@@ -124,7 +124,7 @@ PRIVATE_KEY=xxx RPC_URL=https://xxx make deploy
 
 Upgrade (copy proxy address from deployed output):
 ```bash
-PRIVATE_KEY=xxx RPC_URL=https://xxx PROXY_ADDRESS=xxx make upgrade
+PRIVATE_KEY=xxx RPC_URL=https://xxx PROXY_ADDRESS=xxx UPGRADE_TO=Vx make upgrade
 ```
 
 Sanity check:
