@@ -1,4 +1,4 @@
-.PHONY: abi deploy upgrade whitelist fee-wallet update-worker update-payment check slither mythril
+.PHONY: abi deploy upgrade whitelist fee-wallet update-worker update-payment verify check slither mythril
 
 ifdef ENV_FILE
 include $(ENV_FILE)
@@ -28,6 +28,9 @@ update-worker:
 
 update-payment:
 	PROXY_ADDRESS=$(PROXY_ADDRESS) forge script ./script/UpdatePayment.s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
+
+verify:
+	ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) forge verify-contract --verifier-url $(VERIFIER_URL) --watch $(IMPL_ADDRESS) src/Blueprint$(LATEST).sol:Blueprint$(LATEST)
 
 check:
 	cast call --rpc-url $(RPC_URL) $(PROXY_ADDRESS) "VERSION()(string)"
