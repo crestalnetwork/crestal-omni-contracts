@@ -30,10 +30,10 @@ update-payment:
 	PROXY_ADDRESS=$(PROXY_ADDRESS) forge script ./script/UpdatePayment.s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
 
 verify-impl:
-	ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) forge verify-contract --verifier-url $(VERIFIER_URL) --watch $(IMPL_ADDRESS) src/Blueprint$(LATEST).sol:Blueprint$(LATEST)
+	FOUNDRY_PROFILE=verify ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) forge verify-contract --verifier-url $(VERIFIER_URL) --watch $(IMPL_ADDRESS) src/Blueprint$(LATEST).sol:Blueprint$(LATEST)
 
 verify-proxy:
-	ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) forge verify-contract --verifier-url $(VERIFIER_URL) --watch $(PROXY_ADDRESS) lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy --constructor-args `cast abi-encode "constructor(address,bytes)" $(PROXY_DEPLOY_ARG1) $(PROXY_DEPLOY_ARG2)`
+	FOUNDRY_PROFILE=verify ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) forge verify-contract --verifier-url $(VERIFIER_URL) --watch $(PROXY_ADDRESS) lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy --constructor-args `cast abi-encode "constructor(address,bytes)" $(PROXY_DEPLOY_ARG1) $(PROXY_DEPLOY_ARG2)`
 
 check:
 	cast call --rpc-url $(RPC_URL) $(PROXY_ADDRESS) "VERSION()(string)"
