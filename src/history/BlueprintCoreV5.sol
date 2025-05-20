@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.26;
 
-import {EIP712} from "./EIP712.sol";
-import {Payment} from "./Payment.sol";
+import {EIP712} from "./EIP712V5.sol";
+import {Payment} from "./PaymentV5.sol";
 
 contract BlueprintCore is EIP712, Payment {
     enum Status {
@@ -154,14 +154,6 @@ contract BlueprintCore is EIP712, Payment {
 
     event UserTopUp(
         address indexed walletAddress, address feeCollectionWalletAddress, address tokenAddress, uint256 amount
-    );
-
-    event UserTopUpOther(
-        address indexed ownerAddress,
-        address indexed toAddress,
-        address feeCollectionWalletAddress,
-        address tokenAddress,
-        uint256 amount
     );
 
     modifier newProject(bytes32 projectId) {
@@ -781,13 +773,13 @@ contract BlueprintCore is EIP712, Payment {
         return whitelistUsers[userAddress] == Status.Issued || whitelistUsers[userAddress] == Status.Pickup;
     }
 
-    function topUp(address toUserAddress, address tokenAddress, uint256 amount) internal {
+    function userTopUp(address tokenAddress, uint256 amount) public payable {
         require(amount > 0, "Amount must be greater than 0");
 
         require(paymentAddressEnableMp[tokenAddress], "Payment address is not valid");
 
         // update user top up
-        userTopUpMp[toUserAddress][tokenAddress] += amount;
+        userTopUpMp[msg.sender][tokenAddress] += amount;
 
         if (tokenAddress == address(0)) {
             require(msg.value == amount, "Native token amount mismatch");
@@ -795,19 +787,11 @@ contract BlueprintCore is EIP712, Payment {
             // payment to fee collection wallet address with ether
             payWithNativeToken(payable(feeCollectionWalletAddress), amount);
         } else {
-            // payment to feeCollectionWalletAddress with token, fromAddress always from msg.sender
+            // payment to feeCollectionWalletAddress with token
             payWithERC20(tokenAddress, amount, msg.sender, feeCollectionWalletAddress);
         }
-    }
 
-    function userTopUp(address tokenAddress, uint256 amount) public payable {
-        topUp(msg.sender, tokenAddress, amount);
         emit UserTopUp(msg.sender, feeCollectionWalletAddress, tokenAddress, amount);
-    }
-
-    function userTopUpOther(address userAddress, address tokenAddress, uint256 amount) public payable {
-        topUp(userAddress, tokenAddress, amount);
-        emit UserTopUpOther(msg.sender, userAddress, feeCollectionWalletAddress, tokenAddress, amount);
     }
 
     // it is ok to expose public function to get user nonce
