@@ -9,12 +9,14 @@ import {BlueprintV2} from "../src/BlueprintV2.sol";
 import {BlueprintV3} from "../src/BlueprintV3.sol";
 import {BlueprintV4} from "../src/BlueprintV4.sol";
 import {BlueprintV5} from "../src/BlueprintV5.sol";
+import {BlueprintV6} from "../src/BlueprintV6.sol";
 
 contract BlueprintTestUpgrade is Test {
     BlueprintV1 public proxy;
     address public solverAddress;
     bytes32 public projIdV4;
     bytes32 public projIdV5;
+    bytes32 public projIdV6;
     address public constant NFT_CONTRACT_ADDRESS = address(0x7D8be0Dd8915E3511fFDDABDD631812be824f578);
 
     function setUp() public {
@@ -212,7 +214,7 @@ contract BlueprintTestUpgrade is Test {
         assertEq(projIdV4, latestProjId);
     }
 
-    function test_UpdradeV5() public {
+    function test_UpgradeV5() public {
         test_UpgradeV4();
 
         // upgrade into V5
@@ -235,5 +237,26 @@ contract BlueprintTestUpgrade is Test {
         assertEq(projIdV5, latestProjId);
 
         assertEq(BlueprintV5(address(proxy)).NFT_CONTRACT_ADDRESS(), NFT_CONTRACT_ADDRESS);
+    }
+
+    function test_UpgradeV6() public {
+        test_UpgradeV5();
+        // upgrade into V6
+        BlueprintV6 blueprintV6 = new BlueprintV6();
+        proxy.upgradeToAndCall(address(blueprintV6), abi.encodeWithSignature("initialize()"));
+
+        string memory ver = proxy.VERSION();
+        assertEq(ver, "6.0.0");
+        // get v5 project id
+        bytes32 latestProjId = proxy.getLatestUserProjectID(address(this));
+        assertEq(projIdV5, latestProjId);
+
+        // create new deployment
+        projIdV6 = bytes32(0x2723a34e38d0f0aa09ce626f00aa23c0464b52c75516cf3203cc4c9afeaf2986);
+        BlueprintV6(address(proxy)).createProjectIDAndDeploymentRequest(projIdV6, "base64", "test server url");
+        // get latest project id
+        latestProjId = proxy.getLatestUserProjectID(address(this));
+        assertEq(projIdV6, latestProjId);
+
     }
 }

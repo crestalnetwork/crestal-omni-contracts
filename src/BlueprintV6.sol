@@ -12,7 +12,7 @@ contract BlueprintV6 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Blue
     // no hand nation pass NFT contract address
     address public constant NFT_CONTRACT_ADDRESS = address(0x7D8be0Dd8915E3511fFDDABDD631812be824f578);
 
-    function initialize() public reinitializer(5) {
+    function initialize() public reinitializer(6) {
         __Ownable_init(msg.sender);
         VERSION = "6.0.0";
         __EIP712_init(SIGNING_DOMAIN, VERSION);
