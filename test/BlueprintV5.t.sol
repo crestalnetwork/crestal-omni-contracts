@@ -3,8 +3,8 @@ pragma solidity ^0.8.26;
 import {Test, console} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {BlueprintV5} from "../src/BlueprintV5.sol";
-import {BlueprintCore} from "../src/BlueprintCore.sol";
-import {Blueprint} from "../src/Blueprint.sol";
+import {BlueprintCore} from "../src/history/BlueprintCoreV5.sol";
+import {Blueprint} from "../src/history/BlueprintV5.sol";
 import {stdError} from "forge-std/StdError.sol";
 import {MockERC20} from "./MockERC20.sol";
 
