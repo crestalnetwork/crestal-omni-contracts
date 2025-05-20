@@ -257,6 +257,5 @@ contract BlueprintTestUpgrade is Test {
         // get latest project id
         latestProjId = proxy.getLatestUserProjectID(address(this));
         assertEq(projIdV6, latestProjId);
-
     }
 }
