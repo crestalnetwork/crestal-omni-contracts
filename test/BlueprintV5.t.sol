@@ -533,17 +533,29 @@ contract BlueprintTest is Test {
         bool isPaymentAddressEnabled = blueprint.paymentAddressEnableMp(paymentAddress);
         assertTrue(isPaymentAddressEnabled, "Payment address should be enabled");
 
+        // Cannot add again
+        vm.expectRevert("Payment address was already added");
+        blueprint.addPaymentAddress(paymentAddress);
+
+        // Remove and then you can add again, but no duplicates
+        blueprint.removePaymentAddress(paymentAddress);
+        isPaymentAddressEnabled = blueprint.paymentAddressEnableMp(paymentAddress);
+        assertFalse(isPaymentAddressEnabled, "Payment address should be disabled");
+
+        blueprint.addPaymentAddress(paymentAddress);
+        isPaymentAddressEnabled = blueprint.paymentAddressEnableMp(paymentAddress);
+        assertTrue(isPaymentAddressEnabled, "Payment address should be enabled");
+
         // Verify the payment address is in the list
         address[] memory paymentAddresses = blueprint.getPaymentAddresses();
-        bool found = false;
+        uint256 found = 0;
         for (uint256 i = 0; i < paymentAddresses.length; i++) {
             if (paymentAddresses[i] == paymentAddress) {
-                found = true;
-                break;
+                found += 1;
             }
         }
 
-        assertTrue(found, "Payment address should be in the list");
+        assertTrue(found == 1, "Payment address should be in the list, exactly once");
     }
 
     function test_submitProofOfDeployment() public {
