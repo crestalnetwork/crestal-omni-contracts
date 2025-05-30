@@ -40,6 +40,16 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
     }
 
     function addPaymentAddress(address paymentAddress) public onlyOwner {
+        require(!paymentAddressEnableMp[paymentAddress], "Payment address was already added");
+
+        // remove previously pushed entries
+        for (uint256 i = 0; i < paymentAddressesMp[PAYMENT_KEY].length; i++) {
+            if (paymentAddressesMp[PAYMENT_KEY][i] == paymentAddress) {
+                delete paymentAddressesMp[PAYMENT_KEY][i];
+            }
+        }
+
+        // push latest one
         paymentAddressesMp[PAYMENT_KEY].push(paymentAddress);
         paymentAddressEnableMp[paymentAddress] = true;
 
