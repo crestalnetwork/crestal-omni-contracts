@@ -185,4 +185,43 @@ contract BlueprintTest is Test {
         uint256 balance = mockToken.balanceOf(address(this));
         assertEq(balance, rewardAmount, "sender does not have the correct token balance after credit reward");
     }
+
+    function test_addPaymentAddress() public {
+        address paymentAddress = address(mockToken);
+
+        // Expect the PaymentAddressAdded event
+        vm.expectEmit(true, true, true, true);
+        emit Blueprint.PaymentAddressAdded(paymentAddress);
+
+        // Call the addPaymentAddress function
+        blueprint.addPaymentAddress(paymentAddress);
+
+        // Verify the payment address is added
+        bool isPaymentAddressEnabled = blueprint.paymentAddressEnableMp(paymentAddress);
+        assertTrue(isPaymentAddressEnabled, "Payment address should be enabled");
+
+        // Cannot add again
+        vm.expectRevert("Payment address was already added");
+        blueprint.addPaymentAddress(paymentAddress);
+
+        // Remove and then you can add again, but no duplicates
+        blueprint.removePaymentAddress(paymentAddress);
+        isPaymentAddressEnabled = blueprint.paymentAddressEnableMp(paymentAddress);
+        assertFalse(isPaymentAddressEnabled, "Payment address should be disabled");
+
+        blueprint.addPaymentAddress(paymentAddress);
+        isPaymentAddressEnabled = blueprint.paymentAddressEnableMp(paymentAddress);
+        assertTrue(isPaymentAddressEnabled, "Payment address should be enabled");
+
+        // Verify the payment address is in the list
+        address[] memory paymentAddresses = blueprint.getPaymentAddresses();
+        uint256 found = 0;
+        for (uint256 i = 0; i < paymentAddresses.length; i++) {
+            if (paymentAddresses[i] == paymentAddress) {
+                found += 1;
+            }
+        }
+
+        assertTrue(found == 1, "Payment address should be in the list, exactly once");
+    }
 }
