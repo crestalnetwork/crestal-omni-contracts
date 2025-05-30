@@ -81,6 +81,7 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
         emit RemovePaymentAddress(paymentAddress);
     }
 
+    // slither-disable-next-line naming-convention
     function setFeeCollectionWalletAddress(address _feeCollectionWalletAddress) public onlyOwner {
         require(_feeCollectionWalletAddress != address(0), "Fee collection Wallet Address is invalid");
         feeCollectionWalletAddress = _feeCollectionWalletAddress;
@@ -88,6 +89,7 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
         emit FeeCollectionWalletAddress(_feeCollectionWalletAddress);
     }
 
+    // slither-disable-next-line naming-convention
     function setWorkerAdmin(address _workerAdmin) public onlyOwner {
         require(_workerAdmin != address(0), "Worker Admin is invalid");
         workerAdmin = _workerAdmin;

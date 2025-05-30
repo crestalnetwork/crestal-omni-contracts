@@ -4,6 +4,7 @@ pragma solidity ^0.8.26;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/interfaces/IERC721.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
 
 using SafeERC20 for IERC20;
 
@@ -35,7 +36,6 @@ contract Payment {
         require(toAddress != address(0), "Invalid to address");
         require(amount > 0, "Amount must be greater than 0");
 
-        (bool success,) = toAddress.call{value: amount}("");
-        require(success, "Native token transfer failed");
+        Address.sendValue(toAddress, amount);
     }
 }
