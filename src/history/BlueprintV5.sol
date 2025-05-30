@@ -2,7 +2,7 @@
 pragma solidity ^0.8.26;
 
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "./BlueprintCore.sol";
+import "./BlueprintCoreV5.sol";
 
 contract Blueprint is OwnableUpgradeable, BlueprintCore {
     event PaymentAddressAdded(address paymentAddress);
@@ -12,7 +12,6 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
     event FeeCollectionWalletAddress(address feeCollectionWalletAddress);
     event SetWorkerAdmin(address workerAdmin);
     event UpdateWorker(address workerAddress, bool isTrusted);
-    event CreditReward(address indexed userAddress, uint256 amount);
 
     modifier isAdmin() {
         // slither-disable-next-line timestamp
@@ -30,6 +29,19 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
         for (uint256 i = 0; i < whitelistAddress.length; i++) {
             whitelistUsers[whitelistAddress[i]] = Status.Issued;
         }
+    }
+
+    function addWhitelistAddress(address whitelistAddress) public onlyOwner {
+        whitelistUsers[whitelistAddress] = Status.Issued;
+    }
+
+    function deleteWhitelistAddress(address whitelistAddress) public onlyOwner {
+        delete whitelistUsers[whitelistAddress];
+    }
+
+    function resetAgentCreationStatus(address userAddress, uint256 tokenId) public onlyOwner {
+        whitelistUsers[userAddress] = Status.Issued;
+        nftTokenIdMap[tokenId] = Status.Init;
     }
 
     // slither-disable-next-line costly-loop
@@ -96,12 +108,5 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
     // reset previous unclean workers
     function resetWorkers() public isAdmin {
         resetWorkerAddresses();
-    }
-
-    function creditReward(address userAddress, uint256 amount) public isAdmin {
-        require(userAddress != address(0), "User address is invalid");
-        require(amount > 0, "Amount should be greater than zero");
-
-        emit CreditReward(userAddress, amount);
     }
 }
