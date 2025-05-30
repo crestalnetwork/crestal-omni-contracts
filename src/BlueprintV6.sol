@@ -10,7 +10,9 @@ import "./Blueprint.sol";
 contract BlueprintV6 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Blueprint {
     string public constant SIGNING_DOMAIN = "nation.fun";
 
+    /// @custom:oz-upgrades-validate-as-initializer
     function initialize() public reinitializer(6) {
+        __Blueprint_init();
         __Ownable_init(msg.sender);
         VERSION = "6.0.0";
         __EIP712_init(SIGNING_DOMAIN, VERSION);

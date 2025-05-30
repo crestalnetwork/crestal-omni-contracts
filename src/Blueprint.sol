@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./BlueprintCore.sol";
 
-contract Blueprint is OwnableUpgradeable, BlueprintCore {
+contract Blueprint is Initializable, OwnableUpgradeable, BlueprintCore {
     event PaymentAddressAdded(address paymentAddress);
     event CreateAgentTokenCost(address paymentAddress, uint256 cost);
     event UpdateAgentTokenCost(address paymentAddress, uint256 cost);
@@ -19,6 +20,14 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
         require(msg.sender == workerAdmin || msg.sender == owner(), "Not an admin or owner");
         _;
     }
+
+    // slither-disable-start naming-convention
+    /// @custom:oz-upgrades-validate-as-initializer
+    function __Blueprint_init() internal onlyInitializing {
+        __BlueprintCore_init();
+        // any Blueprint-specific setup
+    }
+    // slither-disable-end naming-convention
 
     // slither-disable-next-line naming-convention
     function setNFTContractAddress(address _nftContractAddress) public onlyOwner {
