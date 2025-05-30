@@ -23,8 +23,9 @@ contract Blueprint is Initializable, OwnableUpgradeable, BlueprintCore {
 
     // slither-disable-start naming-convention
     /// @custom:oz-upgrades-validate-as-initializer
-    function __Blueprint_init() internal onlyInitializing {
-        __BlueprintCore_init();
+    function __Blueprint_init(string memory name, string memory version) internal onlyInitializing {
+        __Ownable_init(msg.sender);
+        __BlueprintCore_init(name, version);
         // any Blueprint-specific setup
     }
     // slither-disable-end naming-convention

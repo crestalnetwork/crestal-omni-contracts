@@ -26,7 +26,8 @@ contract EIP712 is EIP712Upgradeable {
 
     // slither-disable-start naming-convention
     /// @custom:oz-upgrades-validate-as-initializer
-    function __EIP712_init() internal onlyInitializing {
+    function __EIP712_custom_init(string memory name, string memory version) internal onlyInitializing {
+        __EIP712_init(name, version);
         // (if you ever add state, initialize it here)
     }
     // slither-disable-end naming-convention
