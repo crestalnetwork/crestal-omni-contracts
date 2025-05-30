@@ -2,10 +2,11 @@
 
 pragma solidity ^0.8.26;
 
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {EIP712} from "./EIP712.sol";
 import {Payment} from "./Payment.sol";
 
-contract BlueprintCore is EIP712, Payment {
+contract BlueprintCore is Initializable, EIP712, Payment {
     enum Status {
         Init,
         Issued,
@@ -196,6 +197,14 @@ contract BlueprintCore is EIP712, Payment {
         require(trustWorkerMp[msg.sender], "Worker is not trusted");
         _;
     }
+
+    // slither-disable-start naming-convention
+    /// @custom:oz-upgrades-validate-as-initializer
+    function __BlueprintCore_init(string memory name, string memory version) internal onlyInitializing {
+        __EIP712_custom_init(name, version);
+        // (if you ever add state, initialize it here)
+    }
+    // slither-disable-end naming-convention
 
     function setProjectId(bytes32 projectId, address userAddr) internal newProject(projectId) {
         require(userAddr != dummyAddress, "Invalid userAddr");

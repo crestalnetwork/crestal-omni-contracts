@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.26;
 
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
@@ -22,6 +23,14 @@ contract EIP712 is EIP712Upgradeable {
     bytes32 public constant RESET_DEPLOYMENT_REQUEST_TYPEHASH = keccak256(
         "ResetDeploymentRequest(bytes32 projectId,bytes32 requestID,address workerAddress,string updatedBase64Config,uint256 nonce)"
     );
+
+    // slither-disable-start naming-convention
+    /// @custom:oz-upgrades-validate-as-initializer
+    function __EIP712_custom_init(string memory name, string memory version) internal onlyInitializing {
+        __EIP712_init(name, version);
+        // (if you ever add state, initialize it here)
+    }
+    // slither-disable-end naming-convention
 
     function getAddress() public view returns (address) {
         (,,,, address verifyingContract,,) = eip712Domain();
