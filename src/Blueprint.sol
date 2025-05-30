@@ -102,7 +102,6 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
         require(userAddress != address(0), "User address is invalid");
         require(amount > 0, "Amount should be greater than zero");
 
-        // slither-disable-next-line reentrancy-events
         emit CreditReward(userAddress, amount);
     }
 }

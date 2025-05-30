@@ -8,9 +8,7 @@ import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable
 import "./Blueprint.sol";
 
 contract BlueprintV6 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Blueprint {
-    string public constant SIGNING_DOMAIN = "app.crestal.network";
-    // no hand nation pass NFT contract address
-    address public constant NFT_CONTRACT_ADDRESS = address(0x7D8be0Dd8915E3511fFDDABDD631812be824f578);
+    string public constant SIGNING_DOMAIN = "nation.fun";
 
     function initialize() public reinitializer(6) {
         __Ownable_init(msg.sender);
