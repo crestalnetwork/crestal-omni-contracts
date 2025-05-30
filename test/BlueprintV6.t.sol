@@ -157,4 +157,32 @@ contract BlueprintTest is Test {
         userBalance = blueprint.userTopUpMp(address(this), address(mockToken));
         assertEq(userBalance, 0, "User top-up amount is incorrect");
     }
+
+    function test_creditReward() public {
+        uint256 rewardAmount = 100 * 10 ** 18;
+
+        // Add the payment address
+        blueprint.addPaymentAddress(address(mockToken));
+
+        // Mint tokens to the test account
+        mockToken.mint(address(this), rewardAmount);
+
+        // Approve the blueprint contract to spend tokens
+        mockToken.approve(address(blueprint), rewardAmount);
+
+        // Expect the CreditReward event
+        vm.expectEmit(true, true, true, true);
+        emit Blueprint.CreditReward(address(this), rewardAmount);
+
+        // Call the creditReward function
+        blueprint.creditReward(address(this), rewardAmount);
+
+        // Verify the token transfer, not doing any transfer to the user, so balance should be zero
+        uint256 blueprintBalance = mockToken.balanceOf(blueprint.feeCollectionWalletAddress());
+        assertEq(blueprintBalance, 0, "Blueprint fee collection wallet balance is incorrect");
+
+        //admin user does not pay anything for credit reward
+        uint256 balance = mockToken.balanceOf(address(this));
+        assertEq(balance, rewardAmount, "sender does not have the correct token balance after credit reward");
+    }
 }
