@@ -224,4 +224,31 @@ contract BlueprintTest is Test {
 
         assertTrue(found == 1, "Payment address should be in the list, exactly once");
     }
+
+    function test_updateWorkerDeploymentConfig() public {
+        string memory base64Proposal = "test base64 proposal";
+        string memory serverURL = "app.crestal.network";
+
+        // Add the payment address
+        blueprint.addPaymentAddress(address(mockToken));
+
+        // set zero cost for create agents, use any number less than 0
+        blueprint.setCreateAgentTokenCost(address(mockToken), 0);
+
+        // Create agent with token
+        bytes32 requestId =
+            blueprint.createAgentWithToken(projectId, base64Proposal, workerAddress, serverURL, address(mockToken));
+
+        // set zero cost for create agents, use any number less than 0
+        blueprint.setUpdateCreateAgentTokenCost(address(mockToken), 0);
+
+        bytes32 updateHash =
+            keccak256(abi.encodePacked(block.timestamp, address(this), requestId, base64Proposal, block.chainid));
+        // Expect the UpdateDeploymentConfig event
+        vm.expectEmit(true, true, true, true);
+        emit BlueprintCore.UpdateDeploymentConfig(projectId, requestId, workerAddress, updateHash, base64Proposal);
+
+        // update agent deployment config
+        blueprint.updateWorkerDeploymentConfig(address(mockToken), projectId, requestId, base64Proposal);
+    }
 }

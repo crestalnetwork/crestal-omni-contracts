@@ -150,7 +150,11 @@ contract BlueprintCore is Initializable, EIP712, Payment {
     );
 
     event UpdateDeploymentConfig(
-        bytes32 indexed projectID, bytes32 indexed requestID, address workerAddress, string base64Config
+        bytes32 indexed projectID,
+        bytes32 indexed requestID,
+        address workerAddress,
+        bytes32 updateHash,
+        string base64Config
     );
 
     event CreateAgent(
@@ -647,8 +651,11 @@ contract BlueprintCore is Initializable, EIP712, Payment {
             }
         }
 
+        bytes32 updateHash =
+            keccak256(abi.encodePacked(block.timestamp, userAddress, requestID, updatedBase64Config, block.chainid));
+
         emit UpdateDeploymentConfig(
-            projectId, requestID, requestDeploymentStatus[requestID].deployWorkerAddr, updatedBase64Config
+            projectId, requestID, requestDeploymentStatus[requestID].deployWorkerAddr, updateHash, updatedBase64Config
         );
     }
 
@@ -751,10 +758,6 @@ contract BlueprintCore is Initializable, EIP712, Payment {
 
     function getEIP712ContractAddress() public view returns (address) {
         return getAddress();
-    }
-
-    function isWhitelistUser(address userAddress) public view returns (bool) {
-        return whitelistUsers[userAddress] == Status.Issued || whitelistUsers[userAddress] == Status.Pickup;
     }
 
     function topUp(address toUserAddress, address tokenAddress, uint256 amount) internal {
