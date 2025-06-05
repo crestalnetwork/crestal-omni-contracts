@@ -2,10 +2,11 @@
 
 pragma solidity ^0.8.26;
 
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {EIP712} from "./EIP712.sol";
 import {Payment} from "./Payment.sol";
 
-contract BlueprintCore is EIP712, Payment {
+contract BlueprintCore is Initializable, EIP712, Payment {
     enum Status {
         Init,
         Issued,
@@ -27,9 +28,13 @@ contract BlueprintCore is EIP712, Payment {
     // not override it again in upgrades unless absolutely necessary
     // slither-disable-next-line uninitialized-state,constable-states
     uint256 public factor;
+    // This is no longer used, but for upgradeable compatibility, it stays
+    // slither-disable-next-line constable-states
     uint256 public totalProposalRequest;
     uint256 public totalDeploymentRequest;
 
+    // This is no longer used, but for upgradeable compatibility, it stays
+    // slither-disable-next-line uninitialized-state
     mapping(address => bytes32) public latestProposalRequestID;
     mapping(address => bytes32) public latestDeploymentRequestID;
     mapping(address => bytes32) public latestProjectID;
@@ -197,6 +202,14 @@ contract BlueprintCore is EIP712, Payment {
         _;
     }
 
+    // slither-disable-start naming-convention
+    /// @custom:oz-upgrades-validate-as-initializer
+    function __BlueprintCore_init(string memory name, string memory version) internal onlyInitializing {
+        __EIP712_custom_init(name, version);
+        // (if you ever add state, initialize it here)
+    }
+    // slither-disable-end naming-convention
+
     function setProjectId(bytes32 projectId, address userAddr) internal newProject(projectId) {
         require(userAddr != dummyAddress, "Invalid userAddr");
 
@@ -262,39 +275,6 @@ contract BlueprintCore is EIP712, Payment {
 
         // update project solver info
         projects[projectId].proposedSolverAddr = solverAddress;
-    }
-
-    function createCommonDeploymentRequest(
-        address userAddress,
-        bytes32 projectId,
-        address solverAddress,
-        address workerAddress,
-        string memory base64Proposal,
-        string memory serverURL
-    ) internal returns (bytes32 requestID) {
-        require(solverAddress != dummyAddress, "solverAddress is not valid");
-
-        bytes32 projectDeploymentId;
-        (requestID, projectDeploymentId) =
-            deploymentRequest(userAddress, projectId, solverAddress, workerAddress, base64Proposal, serverURL, 0);
-        totalDeploymentRequest++;
-
-        // once we got request deploymentID, then we set project requestDeploymentID, which points to a list of deploymentID
-        projects[projectId].requestDeploymentID = projectDeploymentId;
-
-        // push request deploymentID into map, link to a project
-        deploymentIdList[projectDeploymentId].push(requestID);
-
-        if (workerAddress == dummyAddress) {
-            emit RequestDeployment(projectId, userAddress, solverAddress, requestID, base64Proposal, serverURL);
-        } else {
-            emit RequestPrivateDeployment(
-                projectId, userAddress, workerAddress, solverAddress, requestID, base64Proposal, serverURL
-            );
-
-            // emit accept deployment event since this deployment request is accepted by blueprint
-            emit AcceptDeployment(projectId, requestID, workerAddress);
-        }
     }
 
     function createCommonProjectIDAndDeploymentRequest(
@@ -572,6 +552,7 @@ contract BlueprintCore is EIP712, Payment {
             // check old project id and request id binding
             (,, bytes32[] memory deploymentIds) = getProjectInfo(projectId);
             for (uint256 i = 0; i < deploymentIds.length; i++) {
+                // slither-disable-next-line incorrect-equality,timestamp
                 if (deploymentIds[i] == requestID) {
                     // build project id to request id mapping for old project id
                     requestIDToProjectID[requestID] = projectId;
@@ -747,11 +728,6 @@ contract BlueprintCore is EIP712, Payment {
     // get list of payment addresses
     function getPaymentAddresses() public view returns (address[] memory) {
         return paymentAddressesMp[PAYMENT_KEY];
-    }
-
-    // get latest proposal request id
-    function getLatestProposalRequestID(address addr) public view returns (bytes32) {
-        return latestProposalRequestID[addr];
     }
 
     // get latest deployment request id

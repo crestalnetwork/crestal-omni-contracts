@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
+import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "./BlueprintCore.sol";
 
-contract Blueprint is OwnableUpgradeable, BlueprintCore {
+contract Blueprint is Initializable, OwnableUpgradeable, BlueprintCore {
     event PaymentAddressAdded(address paymentAddress);
     event CreateAgentTokenCost(address paymentAddress, uint256 cost);
     event UpdateAgentTokenCost(address paymentAddress, uint256 cost);
@@ -19,6 +20,15 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
         require(msg.sender == workerAdmin || msg.sender == owner(), "Not an admin or owner");
         _;
     }
+
+    // slither-disable-start naming-convention
+    /// @custom:oz-upgrades-validate-as-initializer
+    function __Blueprint_init(string memory name, string memory version) internal onlyInitializing {
+        __Ownable_init(msg.sender);
+        __BlueprintCore_init(name, version);
+        // any Blueprint-specific setup
+    }
+    // slither-disable-end naming-convention
 
     // slither-disable-next-line naming-convention
     function setNFTContractAddress(address _nftContractAddress) public onlyOwner {
@@ -40,6 +50,16 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
     }
 
     function addPaymentAddress(address paymentAddress) public onlyOwner {
+        require(!paymentAddressEnableMp[paymentAddress], "Payment address was already added");
+
+        // remove previously pushed entries
+        for (uint256 i = 0; i < paymentAddressesMp[PAYMENT_KEY].length; i++) {
+            if (paymentAddressesMp[PAYMENT_KEY][i] == paymentAddress) {
+                delete paymentAddressesMp[PAYMENT_KEY][i];
+            }
+        }
+
+        // push latest one
         paymentAddressesMp[PAYMENT_KEY].push(paymentAddress);
         paymentAddressEnableMp[paymentAddress] = true;
 
@@ -71,6 +91,7 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
         emit RemovePaymentAddress(paymentAddress);
     }
 
+    // slither-disable-next-line naming-convention
     function setFeeCollectionWalletAddress(address _feeCollectionWalletAddress) public onlyOwner {
         require(_feeCollectionWalletAddress != address(0), "Fee collection Wallet Address is invalid");
         feeCollectionWalletAddress = _feeCollectionWalletAddress;
@@ -78,6 +99,7 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
         emit FeeCollectionWalletAddress(_feeCollectionWalletAddress);
     }
 
+    // slither-disable-next-line naming-convention
     function setWorkerAdmin(address _workerAdmin) public onlyOwner {
         require(_workerAdmin != address(0), "Worker Admin is invalid");
         workerAdmin = _workerAdmin;
@@ -102,7 +124,6 @@ contract Blueprint is OwnableUpgradeable, BlueprintCore {
         require(userAddress != address(0), "User address is invalid");
         require(amount > 0, "Amount should be greater than zero");
 
-        // slither-disable-next-line reentrancy-events
         emit CreditReward(userAddress, amount);
     }
 }

@@ -158,6 +158,73 @@ contract BlueprintTest is Test {
         assertEq(userBalance, 0, "User top-up amount is incorrect");
     }
 
+    function test_creditReward() public {
+        uint256 rewardAmount = 100 * 10 ** 18;
+
+        // Add the payment address
+        blueprint.addPaymentAddress(address(mockToken));
+
+        // Mint tokens to the test account
+        mockToken.mint(address(this), rewardAmount);
+
+        // Approve the blueprint contract to spend tokens
+        mockToken.approve(address(blueprint), rewardAmount);
+
+        // Expect the CreditReward event
+        vm.expectEmit(true, true, true, true);
+        emit Blueprint.CreditReward(address(this), rewardAmount);
+
+        // Call the creditReward function
+        blueprint.creditReward(address(this), rewardAmount);
+
+        // Verify the token transfer, not doing any transfer to the user, so balance should be zero
+        uint256 blueprintBalance = mockToken.balanceOf(blueprint.feeCollectionWalletAddress());
+        assertEq(blueprintBalance, 0, "Blueprint fee collection wallet balance is incorrect");
+
+        //admin user does not pay anything for credit reward
+        uint256 balance = mockToken.balanceOf(address(this));
+        assertEq(balance, rewardAmount, "sender does not have the correct token balance after credit reward");
+    }
+
+    function test_addPaymentAddress() public {
+        address paymentAddress = address(mockToken);
+
+        // Expect the PaymentAddressAdded event
+        vm.expectEmit(true, true, true, true);
+        emit Blueprint.PaymentAddressAdded(paymentAddress);
+
+        // Call the addPaymentAddress function
+        blueprint.addPaymentAddress(paymentAddress);
+
+        // Verify the payment address is added
+        bool isPaymentAddressEnabled = blueprint.paymentAddressEnableMp(paymentAddress);
+        assertTrue(isPaymentAddressEnabled, "Payment address should be enabled");
+
+        // Cannot add again
+        vm.expectRevert("Payment address was already added");
+        blueprint.addPaymentAddress(paymentAddress);
+
+        // Remove and then you can add again, but no duplicates
+        blueprint.removePaymentAddress(paymentAddress);
+        isPaymentAddressEnabled = blueprint.paymentAddressEnableMp(paymentAddress);
+        assertFalse(isPaymentAddressEnabled, "Payment address should be disabled");
+
+        blueprint.addPaymentAddress(paymentAddress);
+        isPaymentAddressEnabled = blueprint.paymentAddressEnableMp(paymentAddress);
+        assertTrue(isPaymentAddressEnabled, "Payment address should be enabled");
+
+        // Verify the payment address is in the list
+        address[] memory paymentAddresses = blueprint.getPaymentAddresses();
+        uint256 found = 0;
+        for (uint256 i = 0; i < paymentAddresses.length; i++) {
+            if (paymentAddresses[i] == paymentAddress) {
+                found += 1;
+            }
+        }
+
+        assertTrue(found == 1, "Payment address should be in the list, exactly once");
+    }
+
     function test_updateWorkerDeploymentConfig() public {
         string memory base64Proposal = "test base64 proposal";
         string memory serverURL = "app.crestal.network";
