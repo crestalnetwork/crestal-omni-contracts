@@ -149,7 +149,7 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         bytes32 indexed projectID, bytes32 indexed requestID, string base64DeploymentProof
     );
 
-    event UpdateDeploymentConfig(
+    event UpdateDeploymentConfigs(
         bytes32 indexed projectID,
         bytes32 indexed requestID,
         address workerAddress,
@@ -654,7 +654,7 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         bytes32 updateHash =
             keccak256(abi.encodePacked(block.timestamp, userAddress, requestID, updatedBase64Config, block.chainid));
 
-        emit UpdateDeploymentConfig(
+        emit UpdateDeploymentConfigs(
             projectId, requestID, requestDeploymentStatus[requestID].deployWorkerAddr, updateHash, updatedBase64Config
         );
     }
