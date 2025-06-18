@@ -111,6 +111,10 @@ contract BlueprintCore is Initializable, EIP712, Payment {
     // deployment request id to project id mapping
     mapping(bytes32 => bytes32) public requestIDToProjectID;
 
+    // agent copy fee mapping
+    uint256 public platformCopyAgentFee;
+    mapping(bytes32 => mapping(address => uint256)) public copyAgentFeeMp;
+
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);
     event RequestProposal(
         bytes32 indexed projectID,
@@ -149,7 +153,7 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         bytes32 indexed projectID, bytes32 indexed requestID, string base64DeploymentProof
     );
 
-    event UpdateDeploymentConfigs(
+    event DeploymentConfigUpdate(
         bytes32 indexed projectID,
         bytes32 indexed requestID,
         address workerAddress,
@@ -172,6 +176,10 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         address tokenAddress,
         uint256 amount
     );
+
+    event SetCopyAgentFee(bytes32 indexed agentRequestID, address userAddress, address tokenAddress, uint256 fee);
+
+    event CopyAgentRequest(bytes32 indexed copyID, bytes32 indexed originalAgentRequestID, address userAddress);
 
     modifier newProject(bytes32 projectId) {
         // check project id
@@ -207,6 +215,8 @@ contract BlueprintCore is Initializable, EIP712, Payment {
     function __BlueprintCore_init(string memory name, string memory version) internal onlyInitializing {
         __EIP712_custom_init(name, version);
         // (if you ever add state, initialize it here)
+        // default factor
+        factor = 1000; // 100% factor
     }
     // slither-disable-end naming-convention
 
@@ -436,35 +446,6 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         requestID = createAgent(signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL, 0, tokenAddress);
     }
 
-    function createAgentWithNFT(
-        bytes32 projectId,
-        string memory base64Proposal,
-        address privateWorkerAddress,
-        string memory serverURL,
-        uint256 tokenId
-    ) public returns (bytes32 requestID) {
-        requestID =
-            createAgent(msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId, address(0));
-    }
-
-    function createAgentWithSigWithNFT(
-        bytes32 projectId,
-        string memory base64Proposal,
-        address privateWorkerAddress,
-        string memory serverURL,
-        bytes memory signature,
-        uint256 tokenId
-    ) public returns (bytes32 requestID) {
-        // get EIP712 hash digest
-        bytes32 digest =
-            getCreateAgentWithNFTDigest(projectId, base64Proposal, serverURL, privateWorkerAddress, tokenId);
-
-        // get signer address
-        address signerAddr = getSignerAddress(digest, signature);
-
-        requestID =
-            createAgent(signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId, address(0));
-    }
 
     function resetDeployment(
         address userAddress,
@@ -654,7 +635,7 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         bytes32 updateHash =
             keccak256(abi.encodePacked(block.timestamp, userAddress, requestID, updatedBase64Config, block.chainid));
 
-        emit UpdateDeploymentConfigs(
+        emit DeploymentConfigUpdate(
             projectId, requestID, requestDeploymentStatus[requestID].deployWorkerAddr, updateHash, updatedBase64Config
         );
     }
@@ -691,6 +672,60 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         updateWorkerDeploymentConfigCommon(tokenAddress, signerAddr, projectId, requestID, updatedBase64Config);
 
         userNonceMp[owner]++;
+    }
+
+    // set copy agent fee, this can be called by owner only
+    function setCopyAgentFee(
+        bytes32 agentRequestID,
+        address tokenAddress,
+        uint256 fee
+    ) public payable {
+        require(fee > 0, "Fee must be greater than 0");
+        require(paymentAddressEnableMp[tokenAddress], "Invalid token address");
+        // check if it owner of requestID
+        require(deploymentOwners[agentRequestID] == msg.sender, "Only deployment owner can update config");
+
+        // set copy agent fee
+        copyAgentFeeMp[agentRequestID][tokenAddress] = fee;
+
+        emit SetCopyAgentFee(agentRequestID, msg.sender, tokenAddress, fee);
+    }
+
+    // create copy agent request, copyID and originalAgentRequestID is needed, they are different
+    function createCopyAgentRequest(bytes32 copyID, bytes32 originalAgentRequestID, address tokenAddress)
+        public
+        payable
+    {
+        // validate original agent request id from deploymentOwners map
+        require(deploymentOwners[originalAgentRequestID] != address(0), "Invalid original agent request ID");
+        // pay copy agent fee and then emit an event
+        // fee * platformCopyAgentFee / factor goes to fee collection wallet address, while remain fee goes to original agent owner
+        uint256 fee = copyAgentFeeMp[originalAgentRequestID][tokenAddress];
+        require(fee > 0, "Copy agent fee must be greater than 0");
+        // only ERC20 nation token is supported
+        require(paymentAddressEnableMp[tokenAddress], "Invalid token address");
+
+        // pay with token
+        uint256 collectionWalletFee = fee * platformCopyAgentFee / factor;
+        uint256 creatorFee = fee - platformCopyAgentFee;
+
+        // platform fee
+        payWithERC20(
+            tokenAddress,
+            collectionWalletFee,
+            msg.sender,
+            feeCollectionWalletAddress
+        );
+
+        // creator fee
+        payWithERC20(
+            tokenAddress,
+            creatorFee,
+            msg.sender,
+            deploymentOwners[originalAgentRequestID]
+        );
+
+        emit CopyAgentRequest(copyID, originalAgentRequestID, msg.sender);
     }
 
     // set worker public key

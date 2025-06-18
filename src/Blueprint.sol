@@ -14,6 +14,7 @@ contract Blueprint is Initializable, OwnableUpgradeable, BlueprintCore {
     event SetWorkerAdmin(address workerAdmin);
     event UpdateWorker(address workerAddress, bool isTrusted);
     event CreditReward(address indexed userAddress, uint256 amount);
+    event SetGlobalPlatformFee(uint256 fee, uint256 factor);
 
     modifier isAdmin() {
         // slither-disable-next-line timestamp
@@ -125,5 +126,13 @@ contract Blueprint is Initializable, OwnableUpgradeable, BlueprintCore {
         require(amount > 0, "Amount should be greater than zero");
 
         emit CreditReward(userAddress, amount);
+    }
+    // 6 %。=  6 / 100  means fee =6 and baseFactor = 100
+    function setGlobalPlatformFee(uint256 fee,uint256 baseFactor) public isAdmin {
+        // base factor should be greater or equal than 10
+        require(baseFactor >= 10, "Base factor should be greater than or equal to 10");
+        require(fee <= baseFactor, "Fee cannot be greater than factor");
+        platformCopyAgentFee = fee;
+        emit SetGlobalPlatformFee(fee, baseFactor);
     }
 }
