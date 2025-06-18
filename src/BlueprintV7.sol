@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/cryptography/EIP712Upgradeable.sol";
 import "./Blueprint.sol";
 
-contract BlueprintV6 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Blueprint {
+contract BlueprintV7 is Initializable, UUPSUpgradeable, OwnableUpgradeable, Blueprint {
     string public constant SIGNING_DOMAIN = "nation.fun";
 
     /// @custom:oz-upgrades-validate-as-initializer

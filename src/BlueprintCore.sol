@@ -446,7 +446,6 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         requestID = createAgent(signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL, 0, tokenAddress);
     }
 
-
     function resetDeployment(
         address userAddress,
         bytes32 projectId,
@@ -675,11 +674,7 @@ contract BlueprintCore is Initializable, EIP712, Payment {
     }
 
     // set copy agent fee, this can be called by owner only
-    function setCopyAgentFee(
-        bytes32 agentRequestID,
-        address tokenAddress,
-        uint256 fee
-    ) public payable {
+    function setCopyAgentFee(bytes32 agentRequestID, address tokenAddress, uint256 fee) public payable {
         require(fee > 0, "Fee must be greater than 0");
         require(paymentAddressEnableMp[tokenAddress], "Invalid token address");
         // check if it owner of requestID
@@ -710,20 +705,10 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         uint256 creatorFee = fee - platformCopyAgentFee;
 
         // platform fee
-        payWithERC20(
-            tokenAddress,
-            collectionWalletFee,
-            msg.sender,
-            feeCollectionWalletAddress
-        );
+        payWithERC20(tokenAddress, collectionWalletFee, msg.sender, feeCollectionWalletAddress);
 
         // creator fee
-        payWithERC20(
-            tokenAddress,
-            creatorFee,
-            msg.sender,
-            deploymentOwners[originalAgentRequestID]
-        );
+        payWithERC20(tokenAddress, creatorFee, msg.sender, deploymentOwners[originalAgentRequestID]);
 
         emit CopyAgentRequest(copyID, originalAgentRequestID, msg.sender);
     }

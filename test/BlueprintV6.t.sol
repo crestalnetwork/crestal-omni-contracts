@@ -242,11 +242,9 @@ contract BlueprintTest is Test {
         // set zero cost for create agents, use any number less than 0
         blueprint.setUpdateCreateAgentTokenCost(address(mockToken), 0);
 
-        bytes32 updateHash =
-            keccak256(abi.encodePacked(block.timestamp, address(this), requestId, base64Proposal, block.chainid));
         // Expect the UpdateDeploymentConfig event
         vm.expectEmit(true, true, true, true);
-        emit BlueprintCore.UpdateDeploymentConfigs(projectId, requestId, workerAddress, updateHash, base64Proposal);
+        emit BlueprintCore.UpdateDeploymentConfig(projectId, requestId, workerAddress, base64Proposal);
 
         // update agent deployment config
         blueprint.updateWorkerDeploymentConfig(address(mockToken), projectId, requestId, base64Proposal);
