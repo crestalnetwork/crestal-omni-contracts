@@ -1,15 +1,17 @@
 pragma solidity ^0.8.26;
 
+import "../src/Agent.sol";
+import {BlueprintCore} from "../src/BlueprintCore.sol";
+import {BlueprintV7} from "../src/BlueprintV7.sol";
+import {Blueprint} from "../src/Blueprint.sol";
+import {MockERC20} from "./MockERC20.sol";
 import {Test, console} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
-import {BlueprintV7} from "../src/BlueprintV7.sol";
-import {BlueprintCore} from "../src/BlueprintCore.sol";
-import {Blueprint} from "../src/Blueprint.sol";
 import {stdError} from "forge-std/StdError.sol";
-import {MockERC20} from "./MockERC20.sol";
 
 contract BlueprintTest is Test {
     BlueprintV7 public blueprint;
+    Agent public agent;
     MockERC20 public mockToken;
     bytes32 public projectId;
     address public workerAddress;
@@ -22,6 +24,12 @@ contract BlueprintTest is Test {
 
         mockToken = new MockERC20();
 
+        // Deploy Agent with blueprint and router as trusted forwarder random forward address
+        agent = new Agent(address(blueprint), address(blueprint));
+
+        // Set Agent contract in BlueprintV7 (address(this) is owner)
+        blueprint.setAgentContract(address(agent));
+
         // set crestal wallet address
         blueprint.setFeeCollectionWalletAddress(address(0x7D8be0Dd8915E3511fFDDABDD631812be824f578));
 
@@ -29,6 +37,18 @@ contract BlueprintTest is Test {
         workerAddress = address(0x4d6585D89F889F29f77fd7Dd71864269BA1B31df);
         dummyAddress = address(0);
         signerPrivateKey = 0xA11CE;
+    }
+
+    function test_setGlobalPlatformFee() public {
+        // Set the global platform fee to 5%
+        uint256 newFee = 5; // 5% in basis points
+        blueprint.setGlobalPlatformFee(newFee, 100);
+        // Retrieve the global platform fee
+        uint256 fee = blueprint.platformCopyAgentFee();
+        // Assert that the fee is set correctly
+        assertEq(fee, newFee);
+        // factor check
+        assertEq(100, blueprint.factor());
     }
 
     function test_updateWorkerDeploymentConfig() public {
@@ -43,10 +63,7 @@ contract BlueprintTest is Test {
 
         // Create agent with token
         bytes32 requestId =
-            blueprint.createAgentWithToken(projectId, base64Proposal, workerAddress, serverURL, address(mockToken));
-
-        // set zero cost for create agents, use any number less than 0
-        blueprint.setUpdateCreateAgentTokenCost(address(mockToken), 0);
+            agent.createAgentWithToken(projectId, base64Proposal, workerAddress, serverURL, address(mockToken));
 
         bytes32 updateHash =
             keccak256(abi.encodePacked(block.timestamp, address(this), requestId, base64Proposal, block.chainid));
@@ -55,6 +72,6 @@ contract BlueprintTest is Test {
         emit BlueprintCore.DeploymentConfigUpdate(projectId, requestId, workerAddress, updateHash, base64Proposal);
 
         // update agent deployment config
-        blueprint.updateWorkerDeploymentConfig(address(mockToken), projectId, requestId, base64Proposal);
+        agent.updateWorkerDeploymentConfig(address(mockToken), projectId, requestId, base64Proposal);
     }
 }

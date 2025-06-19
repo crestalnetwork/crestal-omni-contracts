@@ -24,6 +24,12 @@ contract EIP712 is EIP712Upgradeable {
         "ResetDeploymentRequest(bytes32 projectId,bytes32 requestID,address workerAddress,string updatedBase64Config,uint256 nonce)"
     );
 
+    bytes32 public constant SET_COPY_AGENT_FEE_TYPEHASH =
+        keccak256("SetCopyAgentFee(bytes32 agentRequestID,address tokenAddress,uint256 fee,uint256 nonce)");
+
+    bytes32 public constant CREATE_COPY_AGENT_REQUEST_TYPEHASH =
+        keccak256("CreateCopyAgentRequest(bytes32 copyID,bytes32 originalAgentRequestID,address tokenAddress)");
+
     // slither-disable-start naming-convention
     /// @custom:oz-upgrades-validate-as-initializer
     function __EIP712_custom_init(string memory name, string memory version) internal onlyInitializing {
@@ -145,6 +151,28 @@ contract EIP712 is EIP712Upgradeable {
                 nonce
             )
         );
+
+        return _hashTypedDataV4(structHash);
+    }
+
+    function getSetCopyAgentFeeDigest(bytes32 agentRequestID, address tokenAddress, uint256 fee, uint256 nonce)
+        public
+        view
+        returns (bytes32)
+    {
+        bytes32 structHash =
+            keccak256(abi.encode(SET_COPY_AGENT_FEE_TYPEHASH, agentRequestID, tokenAddress, fee, nonce));
+
+        return _hashTypedDataV4(structHash);
+    }
+
+    function getCreateCopyAgentRequestDigest(bytes32 copyID, bytes32 originalAgentRequestID, address tokenAddress)
+        public
+        view
+        returns (bytes32)
+    {
+        bytes32 structHash =
+            keccak256(abi.encode(CREATE_COPY_AGENT_REQUEST_TYPEHASH, copyID, originalAgentRequestID, tokenAddress));
 
         return _hashTypedDataV4(structHash);
     }

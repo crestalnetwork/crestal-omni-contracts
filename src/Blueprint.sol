@@ -29,6 +29,7 @@ contract Blueprint is Initializable, OwnableUpgradeable, BlueprintCore {
         __BlueprintCore_init(name, version);
         // any Blueprint-specific setup
     }
+
     // slither-disable-end naming-convention
 
     // slither-disable-next-line naming-convention
@@ -127,12 +128,17 @@ contract Blueprint is Initializable, OwnableUpgradeable, BlueprintCore {
 
         emit CreditReward(userAddress, amount);
     }
-    // 6 %。=  6 / 100  means fee =6 and baseFactor = 100
 
+    function setAgentContract(address _agent) public onlyOwner {
+        agentContract = _agent;
+    }
+
+    // 6 %。=  6 / 100  means fee =6 and baseFactor = 100
     function setGlobalPlatformFee(uint256 fee, uint256 baseFactor) public isAdmin {
         // base factor should be greater or equal than 10
         require(baseFactor >= 10, "Base factor should be greater than or equal to 10");
         require(fee <= baseFactor, "Fee cannot be greater than factor");
+        factor = baseFactor;
         platformCopyAgentFee = fee;
         emit SetGlobalPlatformFee(fee, baseFactor);
     }
