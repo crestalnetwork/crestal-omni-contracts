@@ -25,10 +25,10 @@ contract BlueprintTest is Test {
         mockToken = new MockERC20();
 
         // Deploy Agent with blueprint and router as trusted forwarder random forward address
-        agent = new Agent(address(blueprint), address(blueprint));
+        agent = new Agent(address(blueprint), address(blueprint), "1.0.0");
 
         // Set Agent contract in BlueprintV7 (address(this) is owner)
-        blueprint.setAgentContract(address(agent));
+        blueprint.setAdminContract(address(agent));
 
         // set crestal wallet address
         blueprint.setFeeCollectionWalletAddress(address(0x7D8be0Dd8915E3511fFDDABDD631812be824f578));

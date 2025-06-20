@@ -28,13 +28,13 @@ contract AgentTest is Test {
         blueprint = new BlueprintV7();
         blueprint.initialize(); // mimic upgradeable contract deploy behavior
 
-        agent = new Agent(address(blueprint), address(router));
+        agent = new Agent(address(blueprint), address(router), "1.0.0");
 
         // Set forward contracts in router
         router.setForwardContracts(address(agent), address(blueprint));
 
         // Set the agent contract address in Blueprint
-        blueprint.setAgentContract(address(agent));
+        blueprint.setAdminContract(address(agent));
 
         mockToken = new MockERC20();
 
@@ -131,7 +131,7 @@ contract AgentTest is Test {
         agent.createCopyAgentRequest(copyID, requestId, address(mockToken));
 
         // grant allowance to blueprint address
-        mockToken.approve(address(blueprint), copyAgentFee);
+        mockToken.approve(address(agent), copyAgentFee);
 
         // owner cannot create copy agent request
         vm.expectRevert("Cannot transfer to self address");
@@ -143,7 +143,7 @@ contract AgentTest is Test {
         vm.prank(relayer);
 
         // grant allowance to blueprint address
-        mockToken.approve(address(blueprint), copyAgentFee);
+        mockToken.approve(address(agent), copyAgentFee);
 
         // Expect the CopyAgentRequest event (from Agent, which emits the same event)
         vm.expectEmit(true, false, false, false);
@@ -236,7 +236,7 @@ contract AgentTest is Test {
         // Mint and approve tokens for owner (not relayer)
         mockToken.mint(user, copyAgentFee);
         vm.prank(user);
-        mockToken.approve(address(blueprint), copyAgentFee);
+        mockToken.approve(address(agent), copyAgentFee);
 
         // Record balances before
         uint256 ownerBalanceBefore = mockToken.balanceOf(user);

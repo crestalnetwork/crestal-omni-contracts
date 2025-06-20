@@ -29,7 +29,12 @@ contract Payment {
         require(toAddress != address(0), "Invalid to address");
         require(amount > 0, "Amount must be greater than 0");
         IERC20 token = IERC20(erc20TokenAddress);
-        token.safeTransferFrom(fromAddress, toAddress, amount);
+        if (fromAddress == address(this)) {
+            // owner is the payment contract, so payment contract can transfer directly
+            token.transfer(toAddress, amount);
+        } else {
+            token.safeTransferFrom(fromAddress, toAddress, amount);
+        }
     }
 
     function payWithNativeToken(address payable toAddress, uint256 amount) internal {

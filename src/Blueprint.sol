@@ -15,6 +15,7 @@ contract Blueprint is Initializable, OwnableUpgradeable, BlueprintCore {
     event UpdateWorker(address workerAddress, bool isTrusted);
     event CreditReward(address indexed userAddress, uint256 amount);
     event SetGlobalPlatformFee(uint256 fee, uint256 factor);
+    event SetAdminContract(address agentContract);
 
     modifier isAdmin() {
         // slither-disable-next-line timestamp
@@ -129,8 +130,10 @@ contract Blueprint is Initializable, OwnableUpgradeable, BlueprintCore {
         emit CreditReward(userAddress, amount);
     }
 
-    function setAgentContract(address _agent) public onlyOwner {
-        agentContract = _agent;
+    function setAdminContract(address _adminContract) public onlyOwner {
+        require(_adminContract != address(0), "Admin contract address is invalid");
+        adminContracts[_adminContract] = true;
+        emit SetAdminContract(_adminContract);
     }
 
     // 6 %。=  6 / 100  means fee =6 and baseFactor = 100
