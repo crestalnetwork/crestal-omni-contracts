@@ -20,7 +20,7 @@ contract RouterV1 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Payment
     function initialize() public reinitializer(1) {
         __UUPSUpgradeable_init();
         __Ownable_init(msg.sender);
-        VERSION = "7.0.0";
+        VERSION = "1.0.0";
     }
 
     function setForwardContracts(address _agent, address _blueprint) external onlyOwner {
