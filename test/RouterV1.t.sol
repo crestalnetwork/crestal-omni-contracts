@@ -419,5 +419,68 @@ contract RouterV1Test is Test {
         assertEq(got, req);
     }
 
+    function test_setWorkerPublicKey_via_router() public {
+        // enable the worker in blueprint
+        blueprintAdmin.updateWorker(workerAddress, true);
+
+        bytes memory pubKey = "router-key";
+        vm.prank(workerAddress);
+        router.setWorkerPublicKey(pubKey);
+
+        // verify stored public key and address list
+        bytes memory got = router.getWorkerPublicKey(workerAddress);
+        assertEq(keccak256(got), keccak256(pubKey), "public key mismatch");
+
+        address[] memory addrs = router.getWorkerAddresses();
+        assertEq(addrs[addrs.length - 1], workerAddress, "worker address not registered");
+    }
+
+    function test_submitDeploymentRequest_via_router() public {
+        // create a public deployment request (workerAddress = address(0))
+        bytes32 reqId = router.createAgentWithToken(
+            projectId, "proposal", address(0), "url", address(mockToken)
+        );
+
+        // enable the worker
+        blueprintAdmin.updateWorker(workerAddress, true);
+
+        // expect AcceptDeployment event from blueprint
+        vm.expectEmit(true, true, true, false);
+        emit BlueprintCore.AcceptDeployment(projectId, reqId, workerAddress);
+
+        vm.prank(workerAddress);
+        bool accepted = router.submitDeploymentRequest(projectId, reqId);
+        assertTrue(accepted, "deployment not accepted");
+
+        // verify status and assigned worker
+        (BlueprintCore.Status st, address w) = blueprintAdmin.getDeploymentStatus(reqId);
+        assertEq(uint256(st), uint256(BlueprintCore.Status.Pickup), "wrong status");
+        assertEq(w, workerAddress, "wrong worker assigned");
+    }
+
+    function test_submitProofOfDeployment_via_router() public {
+        // create public request and claim it
+        bytes32 reqId = router.createAgentWithToken(
+            projectId, "proposal", address(0), "url", address(mockToken)
+        );
+        blueprintAdmin.updateWorker(workerAddress, true);
+        vm.prank(workerAddress);
+        router.submitDeploymentRequest(projectId, reqId);
+
+        // expect GeneratedProofOfDeployment event
+        string memory proof = "proof-data";
+        vm.expectEmit(true, true, false, false);
+        emit BlueprintCore.GeneratedProofOfDeployment(projectId, reqId, proof);
+
+        vm.prank(workerAddress);
+        router.submitProofOfDeployment(projectId, reqId, proof);
+
+        // verify stored proof and status
+        string memory got = blueprintAdmin.getDeploymentProof(reqId);
+        assertEq(got, proof, "proof mismatch");
+
+        (BlueprintCore.Status st, ) = blueprintAdmin.getDeploymentStatus(reqId);
+        assertEq(uint256(st), uint256(BlueprintCore.Status.GeneratedProof), "status not updated");
+    }
 
 }
