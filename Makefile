@@ -1,4 +1,4 @@
-.PHONY: abi deploy upgrade whitelist fee-wallet update-worker update-payment verify-impl verify-proxy check slither mythril
+.PHONY: abi deploy upgrade whitelist fee-wallet update-worker update-payment send-credit-reward read-tx-ids verify-impl verify-proxy check slither mythril
 
 ifdef ENV_FILE
 include $(ENV_FILE)
@@ -28,6 +28,12 @@ update-worker:
 
 update-payment:
 	PROXY_ADDRESS=$(PROXY_ADDRESS) forge script ./script/UpdatePayment.s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
+
+send-credit-reward:
+	PROXY_ADDRESS=$(PROXY_ADDRESS) forge script ./script/SendCreditReward.s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
+
+read-tx-ids:
+	jq -r '.transactions[].hash' broadcast/SendCreditReward.s.sol/8453/run-latest.json
 
 verify-impl:
 	FOUNDRY_PROFILE=verify ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) forge verify-contract --verifier-url $(VERIFIER_URL) --watch $(IMPL_ADDRESS) src/Blueprint$(LATEST).sol:Blueprint$(LATEST)
