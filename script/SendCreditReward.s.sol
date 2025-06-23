@@ -6,7 +6,7 @@ import {BlueprintV6} from "../src/BlueprintV6.sol";
 import {StrSlice, toSlice} from "solidity-stringutils/StrSlice.sol";
 
 contract SendCreditRewardScript is Script {
-    using { toSlice } for string;
+    using {toSlice} for string;
 
     function setUp() public {}
 
@@ -25,8 +25,9 @@ contract SendCreditRewardScript is Script {
 
             StrSlice s = line.toSlice();
             (bool found, StrSlice firstSlice, StrSlice secondSlice) = s.splitOnce(toSlice(","));
-            if (!found)
+            if (!found) {
                 continue;
+            }
 
             address addr = vm.parseAddress(firstSlice.toString());
             uint256 amount = vm.parseUint(secondSlice.toString());
