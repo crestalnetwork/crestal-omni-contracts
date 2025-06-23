@@ -50,7 +50,6 @@ contract RouterV1Test is Test {
         // set worker contract
         blueprintAdmin.setAdminContract(address(worker));
 
-
         // Deploy and mint ERC20 token
         mockToken = new MockERC20();
 
@@ -153,7 +152,9 @@ contract RouterV1Test is Test {
 
         // Expect the UserTopUp event
         vm.expectEmit(true, true, true, true);
-        emit Agent.UserTopUp(address(this), blueprintAdmin.feeCollectionWalletAddress(), address(mockToken), topUpAmount);
+        emit Agent.UserTopUp(
+            address(this), blueprintAdmin.feeCollectionWalletAddress(), address(mockToken), topUpAmount
+        );
 
         // Call userTopUp via router
         router.userTopUp(address(mockToken), topUpAmount);
@@ -225,7 +226,8 @@ contract RouterV1Test is Test {
         string memory url = "url";
 
         // prepare gasless createAgent
-        bytes32 cd = blueprintAdmin.getCreateAgentWithTokenDigest(projectId, base64, url, workerAddress, address(mockToken));
+        bytes32 cd =
+            blueprintAdmin.getCreateAgentWithTokenDigest(projectId, base64, url, workerAddress, address(mockToken));
         (uint8 v0, bytes32 r0, bytes32 s0) = vm.sign(signerPrivateKey, cd);
         bytes memory sig0 = abi.encodePacked(r0, s0, v0);
         vm.prank(relayer);
@@ -255,7 +257,8 @@ contract RouterV1Test is Test {
         string memory url = "url";
 
         // prepare gasless createAgent digest & sig
-        bytes32 cd = blueprintAdmin.getCreateAgentWithTokenDigest(projectId, base64, url, workerAddress, address(mockToken));
+        bytes32 cd =
+            blueprintAdmin.getCreateAgentWithTokenDigest(projectId, base64, url, workerAddress, address(mockToken));
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, cd);
         bytes memory sig = abi.encodePacked(r, s, v);
 
@@ -276,7 +279,8 @@ contract RouterV1Test is Test {
         string memory url = "url";
 
         // create agent by meta-tx so deploymentOwner == owner
-        bytes32 cd = blueprintAdmin.getCreateAgentWithTokenDigest(projectId, base64, url, workerAddress, address(mockToken));
+        bytes32 cd =
+            blueprintAdmin.getCreateAgentWithTokenDigest(projectId, base64, url, workerAddress, address(mockToken));
         (uint8 v0, bytes32 r0, bytes32 s0) = vm.sign(signerPrivateKey, cd);
         bytes memory sig0 = abi.encodePacked(r0, s0, v0);
         vm.prank(relayer);
@@ -437,9 +441,7 @@ contract RouterV1Test is Test {
 
     function test_submitDeploymentRequest_via_router() public {
         // create a public deployment request (workerAddress = address(0))
-        bytes32 reqId = router.createAgentWithToken(
-            projectId, "proposal", address(0), "url", address(mockToken)
-        );
+        bytes32 reqId = router.createAgentWithToken(projectId, "proposal", address(0), "url", address(mockToken));
 
         // enable the worker
         blueprintAdmin.updateWorker(workerAddress, true);
@@ -460,9 +462,7 @@ contract RouterV1Test is Test {
 
     function test_submitProofOfDeployment_via_router() public {
         // create public request and claim it
-        bytes32 reqId = router.createAgentWithToken(
-            projectId, "proposal", address(0), "url", address(mockToken)
-        );
+        bytes32 reqId = router.createAgentWithToken(projectId, "proposal", address(0), "url", address(mockToken));
         blueprintAdmin.updateWorker(workerAddress, true);
         vm.prank(workerAddress);
         router.submitDeploymentRequest(projectId, reqId);
@@ -479,8 +479,7 @@ contract RouterV1Test is Test {
         string memory got = blueprintAdmin.getDeploymentProof(reqId);
         assertEq(got, proof, "proof mismatch");
 
-        (BlueprintCore.Status st, ) = blueprintAdmin.getDeploymentStatus(reqId);
+        (BlueprintCore.Status st,) = blueprintAdmin.getDeploymentStatus(reqId);
         assertEq(uint256(st), uint256(BlueprintCore.Status.GeneratedProof), "status not updated");
     }
-
 }

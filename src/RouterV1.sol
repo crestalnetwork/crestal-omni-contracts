@@ -32,6 +32,7 @@ contract RouterV1 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Payment
         worker = _worker;
     }
 
+    // The _authorizeUpgrade function is required by the UUPSUpgradeable contract
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     // =========================

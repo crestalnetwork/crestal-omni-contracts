@@ -6,8 +6,9 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {BlueprintV7} from "../src/BlueprintV7.sol";
 import {RouterV1} from "../src/RouterV1.sol";
 import {Agent} from "../src/Agent.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {Worker} from "../src/Worker.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {Upgrades, Options} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
 interface IUpgradeable {
     function upgradeTo(address newImplementation) external;
@@ -19,45 +20,37 @@ contract DeployScript is Script {
     function run() public {
         vm.startBroadcast();
 
-        // 1. Deploy the new RouterV1 implementation
-        RouterV1 routerV1Impl = new RouterV1();
-        console.log("Deployed RouterV1 implementation:", address(routerV1Impl));
+        // 1.deploy router proxy
+        address routerProxy = Upgrades.deployUUPSProxy("RouterV1.sol:RouterV1", abi.encodeCall(RouterV1.initialize, ()));
+        console.log("Deployed routerProxy:", routerProxy);
+        RouterV1 routerV1 = RouterV1(routerProxy);
+        console.log("router Version:", routerV1.VERSION());
 
-        // 2. Upgrade the old router proxy to point to the new RouterV1 implementation
-        address RouterProxyAddr = vm.envAddress("PROXY_ADDRESS");
-        RouterV1 routerV1Proxy = RouterV1(RouterProxyAddr);
-
-        console.log("Router Version:", routerV1Proxy.VERSION());
-
-        // 3. Attach to existing UUPS proxy (already initialized) and upgrade
-        IUpgradeable(RouterProxyAddr).upgradeTo(address(routerV1Impl));
-        console.log("Upgraded Router proxy to RouterV1 implementation");
-
-        // 3. Interact with the proxy as RouterV1
-        //        RouterV1 routerV1 = RouterV1(RouterProxyAddr);
-
-        // 4. Deploy the new storage proxy, pointing to the old storage contract
-        // address storageContract = 0xF18e0C51ca77AcBe089789E6A761cA3700dc92df;
+        // 2. Deploy/upgrade the new storage proxy, which is previous BlueprintVx contract
         address storageContract = vm.envAddress("STORAGE_ADDRESS");
-        ERC1967Proxy storageProxy =
-            new ERC1967Proxy(storageContract, abi.encodeWithSelector(BlueprintV7(storageContract).initialize.selector));
-        console.log("Deployed storage proxy:", address(storageProxy));
+        Options memory opts;
+        opts.referenceContract = "BlueprintV6.sol";
+        Upgrades.upgradeProxy(
+            storageContract, "BlueprintV7.sol:BlueprintV7", abi.encodeCall(BlueprintV7.initialize, ()), opts
+        );
+        BlueprintV7 storageProxy = BlueprintV7(storageContract);
+        console.log("New storage(blueprint) Version:", storageProxy.VERSION());
 
-        // 5. Deploy the Agent contract
-        Agent agent = new Agent(address(storageProxy), RouterProxyAddr, routerV1Proxy.VERSION());
+        // 3 Deploy the Agent contract
+        Agent agent = new Agent(address(storageProxy), routerProxy, routerV1.VERSION());
         console.log("Deployed Agent:", address(agent));
         console.log("Agent Version:", agent.VERSION());
 
-        // deploy worker contract
-        Worker worker = new Worker(address(storageProxy), RouterProxyAddr, routerV1Proxy.VERSION());
+        // 4. deploy worker contract
+        Worker worker = new Worker(address(storageProxy), routerProxy, routerV1.VERSION());
         console.log("Deployed Worker:", address(worker));
         console.log("Worker Version:", worker.VERSION());
 
         // 6. Set forward contracts in router
-        routerV1Proxy.setForwardContracts(address(agent), address(storageProxy));
+        routerV1.setForwardContracts(address(agent), address(storageProxy));
         console.log("Set forward contracts in RouterV1");
         // set worker
-        routerV1Proxy.setWorker(address(worker));
+        routerV1.setWorker(address(worker));
         console.log("Set Worker contract in RouterV1");
 
         // 7. Set Agent contract in BlueprintV7 (via proxy)
