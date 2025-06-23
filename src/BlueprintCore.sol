@@ -113,7 +113,7 @@ contract BlueprintCore is Initializable, EIP712, Payment {
 
     // agent copy fee mapping
     mapping(address => bool) public adminContracts;
-    uint256 public platformCopyAgentFee;
+    mapping(address => uint256) public platformFee;
     mapping(bytes32 => mapping(address => uint256)) public copyAgentFeeMp;
 
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);
@@ -207,7 +207,6 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         // (if you ever add state, initialize it here)
         // default factor
         factor = 1000; // 100% factor
-        platformCopyAgentFee = 100; // 1% platform fee for copy agent
     }
 
     // slither-disable-end naming-convention

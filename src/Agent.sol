@@ -12,7 +12,9 @@ contract Agent is ERC2771Context, Payment {
     string public VERSION;
 
     event SetCopyAgentFee(bytes32 indexed agentRequestID, address userAddress, address tokenAddress, uint256 fee);
-    event CopyAgentRequest(bytes32 indexed copyID, bytes32 indexed originalAgentRequestID, address userAddress);
+    event CopyAgentRequest(
+        bytes32 indexed copyID, bytes32 indexed originalAgentRequestID, address userAddress, uint256 totalFee
+    );
 
     event UserTopUp(
         address indexed walletAddress, address feeCollectionWalletAddress, address tokenAddress, uint256 amount
@@ -35,8 +37,8 @@ contract Agent is ERC2771Context, Payment {
     }
 
     function setCopyAgentFee(bytes32 agentRequestID, address tokenAddress, uint256 fee) external {
-        require(fee > 0, "Fee must be greater than 0");
         require(Blueprint(blueprintStorageProxy).paymentAddressEnableMp(tokenAddress), "Invalid token address");
+
         address sender = _msgSender();
         require(Blueprint(blueprintStorageProxy).getDeploymentOwner(agentRequestID) == sender, "Not owner");
 
@@ -49,7 +51,6 @@ contract Agent is ERC2771Context, Payment {
     {
         address owner = Blueprint(blueprintStorageProxy).getDeploymentOwner(agentRequestID);
         require(owner != address(0), "Invalid agentRequestID");
-        require(fee > 0, "Fee must be greater than 0");
         require(Blueprint(blueprintStorageProxy).paymentAddressEnableMp(tokenAddress), "Invalid token address");
 
         uint256 nonce = Blueprint(blueprintStorageProxy).getUserNonce(owner);
@@ -103,17 +104,12 @@ contract Agent is ERC2771Context, Payment {
         address owner = Blueprint(blueprintStorageProxy).getDeploymentOwner(originalAgentRequestID);
         require(owner != address(0), "Invalid original agent request ID");
 
-        uint256 fee = Blueprint(blueprintStorageProxy).copyAgentFeeMp(originalAgentRequestID, tokenAddress);
-        require(fee > 0, "Copy Agent is not set by the owner");
-
+        uint256 platformFee = Blueprint(blueprintStorageProxy).platformFee(tokenAddress);
         // check platformFee is set or not
-        require(Blueprint(blueprintStorageProxy).platformCopyAgentFee() > 0, "Platform fee is not set");
-
+        require(platformFee > 0, "Platform fee is not set");
         // calculate platform and creator fees
-        uint256 platformFee =
-            (fee * Blueprint(blueprintStorageProxy).platformCopyAgentFee()) / Blueprint(blueprintStorageProxy).factor();
-
-        uint256 creatorFee = fee - platformFee;
+        uint256 totalFee = getCreateCopyAgentFee(originalAgentRequestID, tokenAddress);
+        uint256 creatorFee = totalFee - platformFee;
 
         address feeWallet = Blueprint(blueprintStorageProxy).feeCollectionWalletAddress();
         address fromAddr = getPaymentFromAddress();
@@ -125,9 +121,23 @@ contract Agent is ERC2771Context, Payment {
         payWithERC20(tokenAddress, platformFee, fromAddr, feeWallet);
 
         // pay the creator fee to the owner of the original agent request
-        payWithERC20(tokenAddress, creatorFee, fromAddr, owner);
+        if (creatorFee > 0) {
+            // if creator fee is greater than 0, we pay the creator fee to the owner
+            payWithERC20(tokenAddress, creatorFee, fromAddr, owner);
+        }
 
-        emit CopyAgentRequest(copyID, originalAgentRequestID, userAddress);
+        emit CopyAgentRequest(copyID, originalAgentRequestID, userAddress, totalFee);
+    }
+
+    function getCreateCopyAgentFee(bytes32 originalAgentRequestID, address tokenAddress)
+        public
+        view
+        returns (uint256)
+    {
+        require(Blueprint(blueprintStorageProxy).paymentAddressEnableMp(tokenAddress), "Invalid token address");
+        uint256 fee = Blueprint(blueprintStorageProxy).copyAgentFeeMp(originalAgentRequestID, tokenAddress);
+        uint256 platformFee = Blueprint(blueprintStorageProxy).platformFee(tokenAddress);
+        return (fee * platformFee) / Blueprint(blueprintStorageProxy).factor() + platformFee;
     }
 
     function createAgentWithToken(

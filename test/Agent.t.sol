@@ -96,7 +96,8 @@ contract AgentTest is Test {
             agent.createAgentWithToken(projectId, base64Proposal, workerAddress, serverURL, address(mockToken));
 
         // set copy agent fee to 1000
-        uint256 copyAgentFee = 1000;
+        uint256 copyAgentFee = 10; // 10 percent
+        uint256 baseFee = 1000000; // 100000 token
 
         // Expect revert because agentContract is not set in Blueprint
         //        vm.expectRevert("Only Agent contract allow");
@@ -111,8 +112,11 @@ contract AgentTest is Test {
         );
 
         // creator not set copy fee
-        vm.expectRevert("Copy Agent is not set by the owner");
+        vm.expectRevert("Platform fee is not set");
         agent.createCopyAgentRequest(copyID, requestId, address(mockToken));
+
+        // set platform fee
+        blueprint.setGlobalPlatformFee(baseFee, address(mockToken)); // 100000 token
 
         // set copy agent fee
         vm.expectEmit(true, true, true, true);
@@ -124,14 +128,15 @@ contract AgentTest is Test {
         agent.createCopyAgentRequest(copyID, requestId, address(mockToken));
 
         // transfer some mock tokens to the sender
-        mockToken.mint(address(this), copyAgentFee);
+        uint256 totalFee = agent.getCreateCopyAgentFee(requestId, address(mockToken));
+        mockToken.mint(address(this), totalFee);
 
         // revert: not grant allowance to Agent contract
         vm.expectRevert("ERC20: transfer amount exceeds allowance");
         agent.createCopyAgentRequest(copyID, requestId, address(mockToken));
 
         // grant allowance to blueprint address
-        mockToken.approve(address(agent), copyAgentFee);
+        mockToken.approve(address(agent), totalFee);
 
         // owner cannot create copy agent request
         vm.expectRevert("Cannot transfer to self address");
@@ -139,15 +144,18 @@ contract AgentTest is Test {
 
         // transfer some mock tokens to relayer
         address relayer = address(0xBEEF);
-        mockToken.mint(relayer, copyAgentFee);
+        mockToken.mint(relayer, totalFee);
         vm.prank(relayer);
 
         // grant allowance to blueprint address
-        mockToken.approve(address(agent), copyAgentFee);
+        mockToken.approve(address(agent), totalFee);
+
+        uint256 platformFee = blueprint.platformFee(address(mockToken));
+        uint256 creatorFee = (copyAgentFee * platformFee) / blueprint.factor();
 
         // Expect the CopyAgentRequest event (from Agent, which emits the same event)
         vm.expectEmit(true, false, false, false);
-        emit Agent.CopyAgentRequest(copyID, requestId, address(this));
+        emit Agent.CopyAgentRequest(copyID, requestId, address(this), platformFee + creatorFee);
 
         // creator balance before creating copy agent request
         uint256 creatorBalanceBefore = mockToken.balanceOf(address(this));
@@ -157,8 +165,6 @@ contract AgentTest is Test {
         agent.createCopyAgentRequest(copyID, requestId, address(mockToken));
 
         // check fee collect wallet balance and creator balance
-        uint256 platformFee = (copyAgentFee * blueprint.platformCopyAgentFee()) / blueprint.factor();
-        uint256 creatorFee = copyAgentFee - platformFee;
         uint256 feeCollectionWalletBalance = mockToken.balanceOf(blueprint.feeCollectionWalletAddress());
         // creator balance after creating copy agent request
         uint256 creatorBalanceAfter = mockToken.balanceOf(address(this));
@@ -192,7 +198,7 @@ contract AgentTest is Test {
             projectId, base64Proposal, workerAddress, serverURL, address(mockToken), createAgentSig
         );
         // Set copy agent fee using gasless signature
-        uint256 copyAgentFee = 1000;
+        uint256 copyAgentFee = 100; // 100 / 1000(factor) percent
         uint256 nonce = blueprint.getUserNonce(owner);
         bytes32 digest = blueprint.getSetCopyAgentFeeDigest(requestId, address(mockToken), copyAgentFee, nonce);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, digest);
@@ -215,7 +221,13 @@ contract AgentTest is Test {
         string memory serverURL = "app.crestal.network";
 
         // Mint and approve tokens for owner (not relayer)
-        uint256 copyAgentFee = 1000;
+        uint256 copyAgentFee = 100; // 100 / 1000 (factor) percent
+
+        uint256 baseFee = 1000000; // 100000 token
+        uint256 totalFee = baseFee + (copyAgentFee * baseFee) / blueprint.factor();
+        // Set the global platform fee
+        blueprint.setGlobalPlatformFee(baseFee, address(mockToken)); // 100000 token
+
         //  0 cost, no need to set allowance and mint tokens
         // Create agent with token, owner is address(this)
         bytes32 requestId =
@@ -234,16 +246,16 @@ contract AgentTest is Test {
         bytes memory signature = abi.encodePacked(r, s, v);
 
         // Mint and approve tokens for owner (not relayer)
-        mockToken.mint(user, copyAgentFee);
+        mockToken.mint(user, totalFee);
         vm.prank(user);
-        mockToken.approve(address(agent), copyAgentFee);
+        mockToken.approve(address(agent), totalFee);
 
         // Record balances before
         uint256 ownerBalanceBefore = mockToken.balanceOf(user);
 
         // Expect event
-        vm.expectEmit(true, true, true, true);
-        emit Agent.CopyAgentRequest(copyID, requestId, user);
+        vm.expectEmit(true, true, true, false);
+        emit Agent.CopyAgentRequest(copyID, requestId, user, 0);
 
         // Relayer submits the gasless request
         vm.prank(relayer);
@@ -252,6 +264,6 @@ contract AgentTest is Test {
         // Check relayer balance is unchanged (should be 0)
         assertEq(mockToken.balanceOf(relayer), 0, "Relayer balance should be 0 after gasless copy agent request");
         // Check owner's balance is reduced by the fee
-        assertEq(mockToken.balanceOf(user), ownerBalanceBefore - copyAgentFee, "Owner should pay the copy agent fee");
+        assertEq(mockToken.balanceOf(user), ownerBalanceBefore - totalFee, "Owner should pay the copy agent fee");
     }
 }

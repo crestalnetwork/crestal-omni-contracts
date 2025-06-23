@@ -93,7 +93,14 @@ contract RouterV1Test is Test {
         bytes32 requestId =
             router.createAgentWithToken(projectId, base64Proposal, workerAddress, serverURL, address(mockToken));
 
-        uint256 copyAgentFee = 1000;
+        uint256 copyAgentFee = 100; // 10 percent: 100 / 1000 (factor)
+        uint256 baseFee = 1000; // 1000 nation token
+
+        // set the global platform fee
+        blueprintAdmin.setGlobalPlatformFee(baseFee, address(mockToken));
+
+        uint256 totalFee = baseFee + (copyAgentFee * baseFee) / blueprintAdmin.factor(); // calculate total fee based on the factor
+
         // Set copy agent fee
         router.setCopyAgentFee(requestId, address(mockToken), copyAgentFee);
 
@@ -104,19 +111,19 @@ contract RouterV1Test is Test {
         );
 
         // transfer some mock tokens to the sender
-        mockToken.mint(address(this), copyAgentFee);
+        mockToken.mint(address(this), totalFee);
 
         // transfer some mock tokens to relayer
         address relayer = address(0xBEEF);
-        mockToken.mint(relayer, copyAgentFee);
+        mockToken.mint(relayer, totalFee);
         vm.prank(relayer);
 
         // grant allowance to router address
-        mockToken.approve(address(router), copyAgentFee);
+        mockToken.approve(address(router), totalFee);
 
         // Expect the CopyAgentRequest event (from Agent, which emits the same event)
         vm.expectEmit(true, false, false, false);
-        emit Agent.CopyAgentRequest(copyID, requestId, address(this));
+        emit Agent.CopyAgentRequest(copyID, requestId, address(this), totalFee);
 
         vm.prank(relayer);
         //relayer create copy request
@@ -317,7 +324,12 @@ contract RouterV1Test is Test {
         bytes32 requestId = router.createAgentWithToken(projectId, base64, workerAddress, url, address(mockToken));
 
         // set copy-fee normally (owner can call)
-        uint256 copyFee = 1234;
+        uint256 copyFee = 100; // 10 percent: 100 / 1000 (factor)
+        uint256 baseFee = 1000; // 1000 nation token
+        // set the global platform fee
+        blueprintAdmin.setGlobalPlatformFee(baseFee, address(mockToken));
+        uint256 totalFee = baseFee + (copyFee * baseFee) / blueprintAdmin.factor(); // calculate total fee based on the factor
+        // set copy agent fee
         router.setCopyAgentFee(requestId, address(mockToken), copyFee);
 
         // prepare create-copy digest & sig
@@ -327,15 +339,15 @@ contract RouterV1Test is Test {
         bytes memory sig2 = abi.encodePacked(r2, s2, v2);
 
         // fund & approve user
-        mockToken.mint(user, copyFee);
+        mockToken.mint(user, totalFee);
         vm.prank(user);
-        mockToken.approve(address(router), copyFee);
+        mockToken.approve(address(router), totalFee);
 
         // user balance before
-        assertEq(mockToken.balanceOf(user), copyFee, "owner should have enough tokens");
+        assertEq(mockToken.balanceOf(user), totalFee, "owner should have enough tokens");
 
         vm.expectEmit(true, true, false, false);
-        emit Agent.CopyAgentRequest(copyID, requestId, user);
+        emit Agent.CopyAgentRequest(copyID, requestId, user, totalFee);
 
         // user create copy agent request via relayer
         vm.prank(relayer);

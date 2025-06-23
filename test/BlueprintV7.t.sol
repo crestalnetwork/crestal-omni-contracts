@@ -40,15 +40,17 @@ contract BlueprintTest is Test {
     }
 
     function test_setGlobalPlatformFee() public {
+        // Add the payment address
+        blueprint.addPaymentAddress(address(mockToken));
         // Set the global platform fee to 5%
-        uint256 newFee = 5; // 5% in basis points
-        blueprint.setGlobalPlatformFee(newFee, 100);
+        uint256 baseFee = 100000; // 100000 nation token
+        blueprint.setGlobalPlatformFee(baseFee, address(mockToken));
         // Retrieve the global platform fee
-        uint256 fee = blueprint.platformCopyAgentFee();
+        uint256 fee = blueprint.platformFee(address(mockToken));
         // Assert that the fee is set correctly
-        assertEq(fee, newFee);
+        assertEq(fee, baseFee);
         // factor check
-        assertEq(100, blueprint.factor());
+        assertEq(1000, blueprint.factor());
     }
 
     function test_updateWorkerDeploymentConfig() public {

@@ -14,8 +14,9 @@ contract Blueprint is Initializable, OwnableUpgradeable, BlueprintCore {
     event SetWorkerAdmin(address workerAdmin);
     event UpdateWorker(address workerAddress, bool isTrusted);
     event CreditReward(address indexed userAddress, uint256 amount);
-    event SetGlobalPlatformFee(uint256 fee, uint256 factor);
+    event SetGlobalPlatformFee(uint256 baseFee, address paymentAddress);
     event SetAdminContract(address agentContract);
+    event RemoveAdminContract(address agentContract);
 
     modifier isAdmin() {
         // slither-disable-next-line timestamp
@@ -136,13 +137,17 @@ contract Blueprint is Initializable, OwnableUpgradeable, BlueprintCore {
         emit SetAdminContract(_adminContract);
     }
 
-    // 6 %。=  6 / 100  means fee =6 and baseFactor = 100
-    function setGlobalPlatformFee(uint256 fee, uint256 baseFactor) public isAdmin {
+    function removeAdminContract(address _adminContract) public onlyOwner {
+        require(_adminContract != address(0), "Admin contract address is invalid");
+        delete adminContracts[_adminContract];
+        emit RemoveAdminContract(_adminContract);
+    }
+
+    // nation token fee is a global fee that applies to all agents
+    function setGlobalPlatformFee(uint256 baseFee, address paymentAddress) public isAdmin {
         // base factor should be greater or equal than 10
-        require(baseFactor >= 10, "Base factor should be greater than or equal to 10");
-        require(fee <= baseFactor, "Fee cannot be greater than factor");
-        factor = baseFactor;
-        platformCopyAgentFee = fee;
-        emit SetGlobalPlatformFee(fee, baseFactor);
+        require(paymentAddressEnableMp[paymentAddress], "Payment Address is not added");
+        platformFee[paymentAddress] = baseFee;
+        emit SetGlobalPlatformFee(baseFee, paymentAddress);
     }
 }

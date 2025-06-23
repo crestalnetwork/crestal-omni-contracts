@@ -57,11 +57,11 @@ contract RouterV1 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Payment
         external
         payable
     {
-        uint256 fee = Blueprint(blueprint).copyAgentFeeMp(originalAgentRequestID, tokenAddress);
+        uint256 totalFee = Agent(agent).getCreateCopyAgentFee(originalAgentRequestID, tokenAddress);
         // transfer funds to agent
         if (tokenAddress != address(0)) {
             // transfer ERC20 tokens to agent
-            payWithERC20(tokenAddress, fee, msg.sender, agent);
+            payWithERC20(tokenAddress, totalFee, msg.sender, agent);
         }
 
         bytes memory data = abi.encodeWithSelector(
@@ -80,7 +80,7 @@ contract RouterV1 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Payment
         address tokenAddress,
         bytes memory signature
     ) external payable {
-        uint256 fee = Blueprint(blueprint).copyAgentFeeMp(originalAgentRequestID, tokenAddress);
+        uint256 totalFee = Agent(agent).getCreateCopyAgentFee(originalAgentRequestID, tokenAddress);
 
         // get digest
         bytes32 digest =
@@ -91,7 +91,7 @@ contract RouterV1 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Payment
         // transfer funds to agent
         if (tokenAddress != address(0)) {
             // transfer ERC20 tokens to agent
-            payWithERC20(tokenAddress, fee, signer, agent);
+            payWithERC20(tokenAddress, totalFee, signer, agent);
         }
 
         Agent(agent).createCopyAgentRequestWithSig{value: msg.value}(
@@ -159,6 +159,15 @@ contract RouterV1 is Initializable, OwnableUpgradeable, UUPSUpgradeable, Payment
         Agent(agent).updateWorkerDeploymentConfigWithSig{value: msg.value}(
             tokenAddress, projectId, requestID, updatedBase64Config, signature
         );
+    }
+
+    // add getCreateCopyAgentFee from agent contract into Router
+    function getCreateCopyAgentFee(bytes32 originalAgentRequestID, address tokenAddress)
+        external
+        view
+        returns (uint256)
+    {
+        return Blueprint(blueprint).copyAgentFeeMp(originalAgentRequestID, tokenAddress);
     }
 
     // --- Payment/TopUp ---

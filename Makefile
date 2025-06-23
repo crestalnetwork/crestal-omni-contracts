@@ -17,6 +17,9 @@ deploy:
 deploy-router:
 	STORAGE_ADDRESS=$(STORAGE_ADDRESS) forge script ./script/DeployRouter.s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
 
+upgrade-router:
+	PROXY_ADDRESS=$(PROXY_ADDRESS) STORAGE_ADDRESS=$(STORAGE_ADDRESS) forge script ./script/UpgradeRouter.s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
+
 upgrade:
 	PROXY_ADDRESS=$(PROXY_ADDRESS) forge script ./script/Upgrade$(UPGRADE_TO).s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
 
