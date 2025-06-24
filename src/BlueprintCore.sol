@@ -409,34 +409,6 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         }
     }
 
-    //    function createAgentWithToken(
-    //        bytes32 projectId,
-    //        string memory base64Proposal,
-    //        address privateWorkerAddress,
-    //        string memory serverURL,
-    //        address tokenAddress
-    //    ) public payable returns (bytes32 requestID) {
-    //        requestID = createAgent(msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL, 0, tokenAddress);
-    //    }
-    //
-    //    function createAgentWithTokenWithSig(
-    //        bytes32 projectId,
-    //        string memory base64Proposal,
-    //        address privateWorkerAddress,
-    //        string memory serverURL,
-    //        address tokenAddress,
-    //        bytes memory signature
-    //    ) public payable returns (bytes32 requestID) {
-    //        // get EIP712 hash digest
-    //        bytes32 digest =
-    //            getCreateAgentWithTokenDigest(projectId, base64Proposal, serverURL, privateWorkerAddress, tokenAddress);
-    //
-    //        // get signer address
-    //        address signerAddr = getSignerAddress(digest, signature);
-    //
-    //        requestID = createAgent(signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL, 0, tokenAddress);
-    //    }
-
     function resetDeployment(
         address userAddress,
         bytes32 projectId,

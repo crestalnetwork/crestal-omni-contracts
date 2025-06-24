@@ -31,7 +31,7 @@ contract Payment {
         IERC20 token = IERC20(erc20TokenAddress);
         if (fromAddress == address(this)) {
             // owner is the payment contract, so payment contract can transfer directly
-            token.transfer(toAddress, amount);
+            token.safeTransfer(toAddress, amount);
         } else {
             token.safeTransferFrom(fromAddress, toAddress, amount);
         }
