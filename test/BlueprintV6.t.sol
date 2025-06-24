@@ -3,8 +3,8 @@ pragma solidity ^0.8.26;
 import {Test, console} from "forge-std/Test.sol";
 import {Vm} from "forge-std/Vm.sol";
 import {BlueprintV6} from "../src/BlueprintV6.sol";
-import {BlueprintCore} from "../src/BlueprintCore.sol";
-import {Blueprint} from "../src/Blueprint.sol";
+import {BlueprintCore} from "../src/history/BlueprintCoreV6.sol";
+import {Blueprint} from "../src/history/BlueprintV6.sol";
 import {stdError} from "forge-std/StdError.sol";
 import {MockERC20} from "./MockERC20.sol";
 
@@ -223,5 +223,30 @@ contract BlueprintTest is Test {
         }
 
         assertTrue(found == 1, "Payment address should be in the list, exactly once");
+    }
+
+    function test_updateWorkerDeploymentConfig() public {
+        string memory base64Proposal = "test base64 proposal";
+        string memory serverURL = "app.crestal.network";
+
+        // Add the payment address
+        blueprint.addPaymentAddress(address(mockToken));
+
+        // set zero cost for create agents, use any number less than 0
+        blueprint.setCreateAgentTokenCost(address(mockToken), 0);
+
+        // Create agent with token
+        bytes32 requestId =
+            blueprint.createAgentWithToken(projectId, base64Proposal, workerAddress, serverURL, address(mockToken));
+
+        // set zero cost for create agents, use any number less than 0
+        blueprint.setUpdateCreateAgentTokenCost(address(mockToken), 0);
+
+        // Expect the UpdateDeploymentConfig event
+        vm.expectEmit(true, true, true, true);
+        emit BlueprintCore.UpdateDeploymentConfig(projectId, requestId, workerAddress, base64Proposal);
+
+        // update agent deployment config
+        blueprint.updateWorkerDeploymentConfig(address(mockToken), projectId, requestId, base64Proposal);
     }
 }

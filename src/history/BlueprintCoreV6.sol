@@ -3,8 +3,8 @@
 pragma solidity ^0.8.26;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import {EIP712} from "./EIP712.sol";
-import {Payment} from "./Payment.sol";
+import {EIP712} from "./EIP712V6.sol";
+import {Payment} from "./PaymentV6.sol";
 
 contract BlueprintCore is Initializable, EIP712, Payment {
     enum Status {
@@ -111,11 +111,6 @@ contract BlueprintCore is Initializable, EIP712, Payment {
     // deployment request id to project id mapping
     mapping(bytes32 => bytes32) public requestIDToProjectID;
 
-    // agent copy fee mapping
-    mapping(address => bool) public adminContracts;
-    mapping(address => uint256) public platformFee;
-    mapping(bytes32 => mapping(address => uint256)) public copyAgentFeeMp;
-
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);
     event RequestProposal(
         bytes32 indexed projectID,
@@ -154,16 +149,24 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         bytes32 indexed projectID, bytes32 indexed requestID, string base64DeploymentProof
     );
 
-    event DeploymentConfigUpdate(
-        bytes32 indexed projectID,
-        bytes32 indexed requestID,
-        address workerAddress,
-        bytes32 updateHash,
-        string base64Config
+    event UpdateDeploymentConfig(
+        bytes32 indexed projectID, bytes32 indexed requestID, address workerAddress, string base64Config
     );
 
     event CreateAgent(
         bytes32 indexed projectID, bytes32 indexed requestID, address walletAddress, uint256 nftTokenId, uint256 amount
+    );
+
+    event UserTopUp(
+        address indexed walletAddress, address feeCollectionWalletAddress, address tokenAddress, uint256 amount
+    );
+
+    event UserTopUpOther(
+        address indexed ownerAddress,
+        address indexed toAddress,
+        address feeCollectionWalletAddress,
+        address tokenAddress,
+        uint256 amount
     );
 
     modifier newProject(bytes32 projectId) {
@@ -190,13 +193,8 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         _;
     }
 
-    modifier isTrustedWorker(address workerAddress) {
-        require(trustWorkerMp[msg.sender] || trustWorkerMp[workerAddress], "Worker is not trusted");
-        _;
-    }
-
-    modifier onlyAdminContract() {
-        require(adminContracts[msg.sender], "Only Agent contract allow");
+    modifier isTrustedWorker() {
+        require(trustWorkerMp[msg.sender], "Worker is not trusted");
         _;
     }
 
@@ -205,10 +203,7 @@ contract BlueprintCore is Initializable, EIP712, Payment {
     function __BlueprintCore_init(string memory name, string memory version) internal onlyInitializing {
         __EIP712_custom_init(name, version);
         // (if you ever add state, initialize it here)
-        // default factor
-        factor = 1000; // 100% factor
     }
-
     // slither-disable-end naming-convention
 
     function setProjectId(bytes32 projectId, address userAddr) internal newProject(projectId) {
@@ -357,7 +352,7 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         string memory serverURL,
         uint256 tokenId,
         address tokenAddress
-    ) public payable onlyAdminContract returns (bytes32 requestID) {
+    ) internal returns (bytes32 requestID) {
         if (tokenAddress == address(0) && tokenId > 0) {
             // create agent with nft
             // check NFT token id is already used or not
@@ -407,6 +402,64 @@ contract BlueprintCore is Initializable, EIP712, Payment {
             // emit create agent event
             emit CreateAgent(projectId, requestID, userAddress, tokenId, cost);
         }
+    }
+
+    function createAgentWithToken(
+        bytes32 projectId,
+        string memory base64Proposal,
+        address privateWorkerAddress,
+        string memory serverURL,
+        address tokenAddress
+    ) public payable returns (bytes32 requestID) {
+        requestID = createAgent(msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL, 0, tokenAddress);
+    }
+
+    function createAgentWithTokenWithSig(
+        bytes32 projectId,
+        string memory base64Proposal,
+        address privateWorkerAddress,
+        string memory serverURL,
+        address tokenAddress,
+        bytes memory signature
+    ) public payable returns (bytes32 requestID) {
+        // get EIP712 hash digest
+        bytes32 digest =
+            getCreateAgentWithTokenDigest(projectId, base64Proposal, serverURL, privateWorkerAddress, tokenAddress);
+
+        // get signer address
+        address signerAddr = getSignerAddress(digest, signature);
+
+        requestID = createAgent(signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL, 0, tokenAddress);
+    }
+
+    function createAgentWithNFT(
+        bytes32 projectId,
+        string memory base64Proposal,
+        address privateWorkerAddress,
+        string memory serverURL,
+        uint256 tokenId
+    ) public returns (bytes32 requestID) {
+        requestID =
+            createAgent(msg.sender, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId, address(0));
+    }
+
+    function createAgentWithSigWithNFT(
+        bytes32 projectId,
+        string memory base64Proposal,
+        address privateWorkerAddress,
+        string memory serverURL,
+        bytes memory signature,
+        uint256 tokenId
+    ) public returns (bytes32 requestID) {
+        // get EIP712 hash digest
+        bytes32 digest =
+            getCreateAgentWithNFTDigest(projectId, base64Proposal, serverURL, privateWorkerAddress, tokenId);
+
+        // get signer address
+        address signerAddr = getSignerAddress(digest, signature);
+
+        requestID =
+            createAgent(signerAddr, projectId, base64Proposal, privateWorkerAddress, serverURL, tokenId, address(0));
     }
 
     function resetDeployment(
@@ -509,13 +562,61 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         return false;
     }
 
+    function submitProofOfDeployment(bytes32 projectId, bytes32 requestID, string memory proofBase64)
+        public
+        hasProject(projectId)
+        isTrustedWorker
+    {
+        require(requestDeploymentStatus[requestID].status != Status.Init, "requestID does not exist");
+        require(requestDeploymentStatus[requestID].deployWorkerAddr == msg.sender, "Wrong worker address");
+        require(requestDeploymentStatus[requestID].status != Status.GeneratedProof, "Already submitted proof");
+
+        require(checkProjectIDAndRequestID(projectId, requestID), "ProjectID and requestID mismatch");
+
+        // set deployment status into generatedProof
+        requestDeploymentStatus[requestID].status = Status.GeneratedProof;
+
+        // save deployment proof to mapping
+        deploymentProof[requestID] = proofBase64;
+
+        emit GeneratedProofOfDeployment(projectId, requestID, proofBase64);
+    }
+
+    function submitDeploymentRequest(bytes32 projectId, bytes32 requestID)
+        public
+        hasProject(projectId)
+        isTrustedWorker
+        returns (bool isAccepted)
+    {
+        require(requestDeploymentStatus[requestID].status != Status.Init, "requestID does not exist");
+        require(
+            requestDeploymentStatus[requestID].status != Status.Pickup,
+            "requestID already picked by another worker, try a different requestID"
+        );
+
+        require(
+            requestDeploymentStatus[requestID].status != Status.GeneratedProof, "requestID has already submitted proof"
+        );
+
+        require(checkProjectIDAndRequestID(projectId, requestID), "ProjectID and requestID mismatch");
+
+        // currently, do first come, first server, will do a better way in the future
+        requestDeploymentStatus[requestID].status = Status.Pickup;
+        requestDeploymentStatus[requestID].deployWorkerAddr = msg.sender;
+
+        // set project deployed worker address
+        isAccepted = true;
+
+        emit AcceptDeployment(projectId, requestID, requestDeploymentStatus[requestID].deployWorkerAddr);
+    }
+
     function updateWorkerDeploymentConfigCommon(
         address tokenAddress,
         address userAddress,
         bytes32 projectId,
         bytes32 requestID,
         string memory updatedBase64Config
-    ) public payable onlyAdminContract hasProject(projectId) {
+    ) internal hasProject(projectId) {
         require(requestDeploymentStatus[requestID].status != Status.Init, "requestID does not exist");
         require(bytes(updatedBase64Config).length > 0, "updatedBase64Config is empty");
         require(requestDeploymentStatus[requestID].status != Status.Issued, "requestID is not picked up by any worker");
@@ -546,12 +647,56 @@ contract BlueprintCore is Initializable, EIP712, Payment {
             }
         }
 
-        bytes32 updateHash =
-            keccak256(abi.encodePacked(block.timestamp, userAddress, requestID, updatedBase64Config, block.chainid));
-
-        emit DeploymentConfigUpdate(
-            projectId, requestID, requestDeploymentStatus[requestID].deployWorkerAddr, updateHash, updatedBase64Config
+        emit UpdateDeploymentConfig(
+            projectId, requestID, requestDeploymentStatus[requestID].deployWorkerAddr, updatedBase64Config
         );
+    }
+
+    function updateWorkerDeploymentConfig(
+        address tokenAddress,
+        bytes32 projectId,
+        bytes32 requestID,
+        string memory updatedBase64Config
+    ) public payable {
+        updateWorkerDeploymentConfigCommon(tokenAddress, msg.sender, projectId, requestID, updatedBase64Config);
+    }
+
+    function updateWorkerDeploymentConfigWithSig(
+        address tokenAddress,
+        bytes32 projectId,
+        bytes32 requestID,
+        string memory updatedBase64Config,
+        bytes memory signature
+    ) public payable {
+        address owner = deploymentOwners[requestID];
+        require(owner != address(0), "Invalid requestID");
+
+        // get EIP712 hash digest
+        bytes32 digest =
+            getUpdateWorkerConfigDigest(tokenAddress, projectId, requestID, updatedBase64Config, userNonceMp[owner]);
+
+        // get signer address
+        address signerAddr = getSignerAddress(digest, signature);
+
+        // check if signer address is owner of requestID
+        require(signerAddr == owner, "Invalid signature");
+
+        updateWorkerDeploymentConfigCommon(tokenAddress, signerAddr, projectId, requestID, updatedBase64Config);
+
+        userNonceMp[owner]++;
+    }
+
+    // set worker public key
+    function setWorkerPublicKey(bytes calldata publicKey) public isTrustedWorker {
+        require(publicKey.length > 0, "Public key cannot be empty");
+
+        // not set length check like 64 or 33 or others
+        // will introduce some admin function to control workers
+        if (workersPublicKey[msg.sender].length == 0) {
+            workerAddressesMp[WORKER_ADDRESS_KEY].push(msg.sender);
+        }
+
+        workersPublicKey[msg.sender] = publicKey;
     }
 
     // get worker public key
@@ -608,104 +753,45 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         return getAddress();
     }
 
+    function isWhitelistUser(address userAddress) public view returns (bool) {
+        return whitelistUsers[userAddress] == Status.Issued || whitelistUsers[userAddress] == Status.Pickup;
+    }
+
+    function topUp(address toUserAddress, address tokenAddress, uint256 amount) internal {
+        require(amount > 0, "Amount must be greater than 0");
+
+        require(paymentAddressEnableMp[tokenAddress], "Payment address is not valid");
+
+        // update user top up
+        userTopUpMp[toUserAddress][tokenAddress] += amount;
+
+        if (tokenAddress == address(0)) {
+            require(msg.value == amount, "Native token amount mismatch");
+
+            // payment to fee collection wallet address with ether
+            payWithNativeToken(payable(feeCollectionWalletAddress), amount);
+        } else {
+            // payment to feeCollectionWalletAddress with token, fromAddress always from msg.sender
+            payWithERC20(tokenAddress, amount, msg.sender, feeCollectionWalletAddress);
+        }
+    }
+
+    function userTopUp(address tokenAddress, uint256 amount) public payable {
+        topUp(msg.sender, tokenAddress, amount);
+        emit UserTopUp(msg.sender, feeCollectionWalletAddress, tokenAddress, amount);
+    }
+
+    function userTopUpOther(address userAddress, address tokenAddress, uint256 amount) public payable {
+        topUp(userAddress, tokenAddress, amount);
+        emit UserTopUpOther(msg.sender, userAddress, feeCollectionWalletAddress, tokenAddress, amount);
+    }
+
     // it is ok to expose public function to get user nonce
     // since the signature with nonce is only used for one time
     // reason make userAddress as param is that gasless flow, user can get nonce with other wallet address, not need msg.sender
 
     function getUserNonce(address userAddress) public view returns (uint256) {
         return userNonceMp[userAddress];
-    }
-
-    function incrementUserNonce(address user) external onlyAdminContract {
-        userNonceMp[user]++;
-    }
-
-    function submitProofOfDeployment(
-        address workerAddr,
-        bytes32 projectId,
-        bytes32 requestID,
-        string memory proofBase64
-    ) public hasProject(projectId) isTrustedWorker(workerAddr) onlyAdminContract {
-        require(requestDeploymentStatus[requestID].status != Status.Init, "requestID does not exist");
-        require(requestDeploymentStatus[requestID].deployWorkerAddr == workerAddr, "Wrong worker address");
-        require(requestDeploymentStatus[requestID].status != Status.GeneratedProof, "Already submitted proof");
-
-        require(checkProjectIDAndRequestID(projectId, requestID), "ProjectID and requestID mismatch");
-
-        // set deployment status into generatedProof
-        requestDeploymentStatus[requestID].status = Status.GeneratedProof;
-
-        // save deployment proof to mapping
-        deploymentProof[requestID] = proofBase64;
-
-        emit GeneratedProofOfDeployment(projectId, requestID, proofBase64);
-    }
-
-    function submitDeploymentRequest(address workerAddr, bytes32 projectId, bytes32 requestID)
-        public
-        hasProject(projectId)
-        isTrustedWorker(workerAddr)
-        onlyAdminContract
-        returns (bool isAccepted)
-    {
-        require(requestDeploymentStatus[requestID].status != Status.Init, "requestID does not exist");
-        require(
-            requestDeploymentStatus[requestID].status != Status.Pickup,
-            "requestID already picked by another worker, try a different requestID"
-        );
-
-        require(
-            requestDeploymentStatus[requestID].status != Status.GeneratedProof, "requestID has already submitted proof"
-        );
-
-        require(checkProjectIDAndRequestID(projectId, requestID), "ProjectID and requestID mismatch");
-
-        // currently, do first come, first server, will do a better way in the future
-        requestDeploymentStatus[requestID].status = Status.Pickup;
-        requestDeploymentStatus[requestID].deployWorkerAddr = workerAddr;
-
-        // set project deployed worker address
-        isAccepted = true;
-
-        emit AcceptDeployment(projectId, requestID, requestDeploymentStatus[requestID].deployWorkerAddr);
-    }
-
-    // set worker public key
-    function setWorkerPublicKey(address workerAddr, bytes calldata publicKey)
-        public
-        isTrustedWorker(workerAddr)
-        onlyAdminContract
-    {
-        require(publicKey.length > 0, "Public key cannot be empty");
-
-        // not set length check like 64 or 33 or others
-        // will introduce some admin function to control workers
-        if (workersPublicKey[workerAddr].length == 0) {
-            workerAddressesMp[WORKER_ADDRESS_KEY].push(workerAddr);
-        }
-
-        workersPublicKey[workerAddr] = publicKey;
-    }
-
-    // Storage setters, only callable by Agent
-    function setCopyAgentFeeStorage(bytes32 agentRequestID, address tokenAddress, uint256 fee)
-        external
-        onlyAdminContract
-    {
-        require(paymentAddressEnableMp[tokenAddress], "Invalid token");
-        copyAgentFeeMp[agentRequestID][tokenAddress] = fee;
-    }
-
-    function AddUserTopUpAmount(address userAddress, address tokenAddress, uint256 amount) external onlyAdminContract {
-        require(paymentAddressEnableMp[tokenAddress], "Invalid token");
-        require(amount > 0, "Amount must be greater than 0");
-        userTopUpMp[userAddress][tokenAddress] += amount;
-    }
-
-    // need a get function to get copy agent fee since it is private mapping
-
-    function getDeploymentOwner(bytes32 agentRequestID) external view returns (address) {
-        return deploymentOwners[agentRequestID];
     }
 
     // get latest deployment status

@@ -10,6 +10,7 @@ import {BlueprintV3} from "../src/BlueprintV3.sol";
 import {BlueprintV4} from "../src/BlueprintV4.sol";
 import {BlueprintV5} from "../src/BlueprintV5.sol";
 import {BlueprintV6} from "../src/BlueprintV6.sol";
+import {BlueprintV7} from "../src/BlueprintV7.sol";
 
 contract BlueprintTestUpgrade is Test {
     BlueprintV1 public proxy;
@@ -257,5 +258,25 @@ contract BlueprintTestUpgrade is Test {
         // get latest project id
         latestProjId = proxy.getLatestUserProjectID(address(this));
         assertEq(projIdV6, latestProjId);
+    }
+
+    function test_UpgradeV7() public {
+        test_UpgradeV6();
+        // upgrade into V7
+        BlueprintV7 blueprintV7 = new BlueprintV7();
+        proxy.upgradeToAndCall(address(blueprintV7), abi.encodeWithSignature("initialize()"));
+
+        string memory ver = proxy.VERSION();
+        assertEq(ver, "7.0.0");
+        // get v6 project id
+        bytes32 latestProjId = proxy.getLatestUserProjectID(address(this));
+        assertEq(projIdV6, latestProjId);
+
+        // create new deployment
+        bytes32 projIdV7 = bytes32(0x2723a34e38d0f0aa09ce626f00aa23c0464b52c75516cf3203cc4c9afeaf2987);
+        BlueprintV7(address(proxy)).createProjectIDAndDeploymentRequest(projIdV7, "base64", "test server url");
+        // get latest project id
+        latestProjId = proxy.getLatestUserProjectID(address(this));
+        assertEq(projIdV7, latestProjId);
     }
 }
