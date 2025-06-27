@@ -25,7 +25,7 @@ contract BlueprintTest is Test {
         mockToken = new MockERC20();
 
         // Deploy Agent with blueprint and router as trusted forwarder random forward address
-        agent = new Agent(address(blueprint), address(blueprint), "1.0.0");
+        agent = new Agent("1.0.0");
 
         // Set Agent contract in BlueprintV7 (address(this) is owner)
         blueprint.setAdminContract(address(agent));
@@ -65,7 +65,7 @@ contract BlueprintTest is Test {
 
         // Create agent with token
         bytes32 requestId =
-            agent.createAgentWithToken(projectId, base64Proposal, workerAddress, serverURL, address(mockToken));
+            blueprint.createAgentWithToken(projectId, base64Proposal, workerAddress, serverURL, address(mockToken));
 
         bytes32 updateHash =
             keccak256(abi.encodePacked(block.timestamp, address(this), requestId, base64Proposal, block.chainid));
@@ -74,6 +74,6 @@ contract BlueprintTest is Test {
         emit BlueprintCore.DeploymentConfigUpdate(projectId, requestId, workerAddress, updateHash, base64Proposal);
 
         // update agent deployment config
-        agent.updateWorkerDeploymentConfig(address(mockToken), projectId, requestId, base64Proposal);
+        blueprint.updateWorkerDeploymentConfig(address(mockToken), projectId, requestId, base64Proposal);
     }
 }

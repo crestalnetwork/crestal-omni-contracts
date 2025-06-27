@@ -6,12 +6,14 @@ import {ERC1967Proxy} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.s
 import {BlueprintV7} from "../src/BlueprintV7.sol";
 import {RouterV1} from "../src/RouterV1.sol";
 import {Agent} from "../src/Agent.sol";
-import {Worker} from "../src/Worker.sol";
+import {NewBlueprint} from "../src/NewBlueprint.sol";
+
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {Upgrades, Options} from "openzeppelin-foundry-upgrades/Upgrades.sol";
 
-interface IUpgradeable {
+interface IERC1967 {
     function upgradeTo(address newImplementation) external;
+    function upgradeToAndCall(address newImplementation, bytes calldata data) external payable;
 }
 
 contract DeployScript is Script {
@@ -20,45 +22,56 @@ contract DeployScript is Script {
     function run() public {
         vm.startBroadcast();
 
-        // 1.deploy router proxy
-        address routerProxy = Upgrades.deployUUPSProxy("RouterV1.sol:RouterV1", abi.encodeCall(RouterV1.initialize, ()));
-        console.log("Deployed routerProxy:", routerProxy);
-        RouterV1 routerV1 = RouterV1(routerProxy);
-        console.log("router Version:", routerV1.VERSION());
-
-        // 2. Deploy/upgrade the new storage proxy, which is previous BlueprintVx contract
-        address storageContract = vm.envAddress("STORAGE_ADDRESS");
+        // 1. upgrade to V7 to solve compatibility issues with RouterV1
+        address proxyAddr = vm.envAddress("PROXY_ADDRESS");
         Options memory opts;
         opts.referenceContract = "BlueprintV6.sol";
         Upgrades.upgradeProxy(
-            storageContract, "BlueprintV7.sol:BlueprintV7", abi.encodeCall(BlueprintV7.initialize, ()), opts
+            proxyAddr, "BlueprintV7.sol:BlueprintV7", abi.encodeCall(BlueprintV7.initialize, ()), opts
         );
-        BlueprintV7 storageProxy = BlueprintV7(storageContract);
-        console.log("New storage(blueprint) Version:", storageProxy.VERSION());
+        BlueprintV7 proxy = BlueprintV7(proxyAddr);
+        console.log("New blueprint Version:", proxy.VERSION());
 
-        // 3 Deploy the Agent contract
-        Agent agent = new Agent(address(storageProxy), routerProxy, routerV1.VERSION());
-        console.log("Deployed Agent:", address(agent));
-        console.log("Agent Version:", agent.VERSION());
+        // 2. deploy router
+        RouterV1 routerImpl = new RouterV1();
+        console.log("Deployed RouterV1 implementation:", address(routerImpl));
 
-        // 4. deploy worker contract
-        Worker worker = new Worker(address(storageProxy), routerProxy, routerV1.VERSION());
-        console.log("Deployed Worker:", address(worker));
-        console.log("Worker Version:", worker.VERSION());
+        // 3. Tell the proxy to point to routerV1 implementation
+        IERC1967(address(proxy)).upgradeToAndCall(address(routerImpl), "");
 
-        // 6. Set forward contracts in router
-        routerV1.setForwardContracts(address(agent), address(storageProxy));
-        console.log("Set forward contracts in RouterV1");
-        // set worker
-        routerV1.setWorker(address(worker));
-        console.log("Set Worker contract in RouterV1");
+        RouterV1 router = RouterV1(payable(address(proxy)));
 
-        // 7. Set Agent contract in BlueprintV7 (via proxy)
-        BlueprintV7(address(storageProxy)).setAdminContract(address(agent));
-        console.log("Set Agent contract in BlueprintV7");
+        // deploy agent contract
+        Agent agent = new Agent(router.VERSION());
+        console.log("Deployed Agent address:", address(agent));
 
-        BlueprintV7(address(storageProxy)).setAdminContract(address(worker));
-        console.log("Set Worker contract in BlueprintV7");
+        // Set Agent contract in router
+        router.setAgent(address(agent));
+
+        // deploy newBlueprint contract
+        NewBlueprint blueprint = new NewBlueprint(router.VERSION());
+        console.log("Deployed NewBlueprint address:", address(blueprint));
+
+        // set newBlueprint contract in router
+        router.setBlueprint(address(blueprint));
+
+        address owner = OwnableUpgradeable(address(proxy)).owner();
+        console.log("Proxy Owner:", owner,"admin address",address(this));
+
+        // set newBlueprint admin
+        router.setBlueprintAdmin(owner);
+
+        // register agent function selectors in router
+        bytes4[] memory agentSelectors = new bytes4[](7);
+        agentSelectors[0] = bytes4(keccak256("setCopyAgentFee(bytes32,address,uint256)"));
+        agentSelectors[1] = bytes4(keccak256("setCopyAgentFeeWithSig(bytes32,address,uint256,bytes)"));
+        agentSelectors[2] = bytes4(keccak256("createCopyAgentRequest(bytes32,bytes32,address)"));
+        agentSelectors[3] = bytes4(keccak256("createCopyAgentRequestWithSig(bytes32,bytes32,address,bytes)"));
+        agentSelectors[4] = bytes4(keccak256("getCreateCopyAgentFee(bytes32,address)"));
+        agentSelectors[5] = bytes4(keccak256("userTopUp(address,uint256)"));
+        agentSelectors[6] = bytes4(keccak256("userTopUpOther(address,address,uint256)"));
+
+        router.setSelectorTargets(agentSelectors, address(agent));
 
         vm.stopBroadcast();
     }

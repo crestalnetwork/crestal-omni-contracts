@@ -2,120 +2,11 @@
 
 pragma solidity ^0.8.26;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import {EIP712} from "./EIP712.sol";
 import {Payment} from "./Payment.sol";
+import "./Storage.sol";
 
-contract BlueprintCore is Initializable, EIP712, Payment {
-    enum Status {
-        Init,
-        Issued,
-        Pickup,
-        Deploying,
-        Deployed,
-        GeneratedProof
-    }
-
-    struct DeploymentStatus {
-        Status status;
-        address deployWorkerAddr;
-    }
-
-    // slither-disable-next-line naming-convention
-    string public VERSION;
-    // This is considered initialized due to BlueprintV1 deployment, however
-    // for future upgrades, it can be seen as "uninitialized" but we should
-    // not override it again in upgrades unless absolutely necessary
-    // slither-disable-next-line uninitialized-state,constable-states
-    uint256 public factor;
-    // This is no longer used, but for upgradeable compatibility, it stays
-    // slither-disable-next-line constable-states
-    uint256 public totalProposalRequest;
-    uint256 public totalDeploymentRequest;
-
-    // This is no longer used, but for upgradeable compatibility, it stays
-    // slither-disable-next-line uninitialized-state
-    mapping(address => bytes32) public latestProposalRequestID;
-    mapping(address => bytes32) public latestDeploymentRequestID;
-    mapping(address => bytes32) public latestProjectID;
-
-    mapping(address => uint256) public solverReputation;
-    mapping(address => uint256) public workerReputation;
-    mapping(bytes32 => DeploymentStatus) public requestDeploymentStatus;
-
-    mapping(bytes32 => string) private deploymentProof;
-    mapping(bytes32 => address) private requestSolver;
-    mapping(bytes32 => address) private requestWorker;
-    // projectIDs is not used anymore after 2.0
-    mapping(bytes32 => address) private projectIDs;
-
-    // keep old variable in order so that it can be compatible with old contract
-
-    // new variable and struct
-    struct Project {
-        bytes32 id;
-        bytes32 requestProposalID;
-        bytes32 requestDeploymentID;
-        address proposedSolverAddr;
-    }
-
-    address public constant dummyAddress = address(0);
-
-    // project map
-    mapping(bytes32 => Project) private projects;
-
-    mapping(bytes32 => bytes32[]) public deploymentIdList;
-
-    // List of worker addresses
-    address[] private workerAddresses;
-    // worker public key
-    mapping(address => bytes) private workersPublicKey;
-
-    // worker address mapping
-    mapping(string => address[]) private workerAddressesMp;
-
-    string private constant WORKER_ADDRESS_KEY = "worker_address_key";
-
-    // NFT token id mapping, one NFT token id can only be used once
-    mapping(uint256 => Status) public nftTokenIdMap;
-
-    address public nftContractAddress;
-
-    // whitelist user can create an agent
-    mapping(address => Status) public whitelistUsers;
-
-    // deployment owner
-    mapping(bytes32 => address) private deploymentOwners;
-
-    // payment related variables
-    string public constant PAYMENT_KEY = "payment_key";
-
-    string public constant CREATE_AGENT_OP = "create_agent";
-    string public constant UPDATE_AGENT_OP = "update_agent";
-
-    address public feeCollectionWalletAddress;
-
-    mapping(string => address[]) public paymentAddressesMp;
-
-    mapping(address => bool) public paymentAddressEnableMp;
-
-    mapping(address => mapping(string => uint256)) public paymentOpCostMp;
-
-    mapping(address => mapping(address => uint256)) public userTopUpMp;
-
-    mapping(address => uint256) private userNonceMp;
-
-    // worker management related variables
-    address public workerAdmin;
-    mapping(address => bool) public trustWorkerMp;
-    // deployment request id to project id mapping
-    mapping(bytes32 => bytes32) public requestIDToProjectID;
-
-    // agent copy fee mapping
-    mapping(address => bool) public adminContracts;
-    mapping(address => uint256) public platformFee;
-    mapping(bytes32 => mapping(address => uint256)) public copyAgentFeeMp;
-
+contract NewBlueprintCore is EIP712, Payment, Storage {
     event CreateProjectID(bytes32 indexed projectID, address walletAddress);
     event RequestProposal(
         bytes32 indexed projectID,
@@ -169,14 +60,14 @@ contract BlueprintCore is Initializable, EIP712, Payment {
     modifier newProject(bytes32 projectId) {
         // check project id
         // slither-disable-next-line incorrect-equality,timestamp
-        require(projects[projectId].id == 0, "projectId already exists");
+        require(_getProject(projectId).id == 0, "projectId already exists");
         _;
     }
 
     modifier hasProjectNew(bytes32 projectId) {
         // only new upgraded (v2) blueprint uses this function
         // slither-disable-next-line timestamp
-        require(projects[projectId].id != 0, "projectId does not exist");
+        require(_getProject(projectId).id != 0, "projectId does not exist");
         _;
     }
 
@@ -186,7 +77,7 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         //    projectIDs[projectId] != address(0) -- > false -- >. old project id created by old blueprint not exist.
         //    both 1 and 2 are false, then project id does not exist in old and new blueprint
         // slither-disable-next-line timestamp
-        require(projects[projectId].id != 0 || projectIDs[projectId] != dummyAddress, "projectId does not exist");
+        require(_getProject(projectId).id != 0 || _getProjectId(projectId) != dummyAddress, "projectId does not exist");
         _;
     }
 
@@ -200,15 +91,6 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         _;
     }
 
-    // slither-disable-start naming-convention
-    /// @custom:oz-upgrades-validate-as-initializer
-    function __BlueprintCore_init(string memory name, string memory version) internal onlyInitializing {
-        __EIP712_custom_init(name, version);
-        // (if you ever add state, initialize it here)
-        // default factor
-        factor = 1000; // 100% factor
-    }
-
     // slither-disable-end naming-convention
 
     function setProjectId(bytes32 projectId, address userAddr) internal newProject(projectId) {
@@ -217,7 +99,7 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         Project memory project =
             Project({id: projectId, requestProposalID: 0, requestDeploymentID: 0, proposedSolverAddr: dummyAddress});
         // set project info into mapping
-        projects[projectId] = project;
+        _setProject(projectId, project);
 
         // set latest project
         latestProjectID[userAddr] = projectId;
@@ -253,7 +135,7 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         // check projectDeploymentId id is created or not
         // if it is created, which means project has started deployment process, should lock
         // slither-disable-next-line incorrect-equality,timestamp
-        require(projects[projectId].requestDeploymentID == 0, "deployment requestID already exists");
+        require(_getProject(projectId).requestDeploymentID == 0, "deployment requestID already exists");
 
         // generate unique deployment requestID message hash
         requestID = keccak256(
@@ -275,7 +157,9 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         requestDeploymentStatus[requestID] = deploymentStatus;
 
         // update project solver info
-        projects[projectId].proposedSolverAddr = solverAddress;
+        Project memory project = _getProject(projectId);
+        project.proposedSolverAddr = solverAddress;
+        _setProject(projectId, project);
     }
 
     function createCommonProjectIDAndDeploymentRequest(
@@ -295,7 +179,10 @@ contract BlueprintCore is Initializable, EIP712, Payment {
             deploymentRequest(userAddress, projectId, dummyAddress, workerAddress, base64Proposal, serverURL, 0);
         totalDeploymentRequest++;
 
-        projects[projectId].requestDeploymentID = projectDeploymentId;
+        Project memory project = _getProject(projectId);
+        // set requestDeploymentID into project
+        project.requestDeploymentID = projectDeploymentId;
+        _setProject(projectId, project);
 
         deploymentIdList[projectDeploymentId].push(requestID);
 
@@ -374,7 +261,7 @@ contract BlueprintCore is Initializable, EIP712, Payment {
             nftTokenIdMap[tokenId] = Status.Pickup;
 
             // set deployment owner
-            deploymentOwners[requestID] = userAddress;
+            _setDeploymentOwner(requestID, userAddress);
 
             // emit create agent event
             emit CreateAgent(projectId, requestID, userAddress, tokenId, 0);
@@ -390,7 +277,7 @@ contract BlueprintCore is Initializable, EIP712, Payment {
             );
 
             // set deployment owner
-            deploymentOwners[requestID] = userAddress;
+            _setDeploymentOwner(requestID, userAddress);
 
             // CEI pattern : Handle token transfers after updating the all of the above functions state.
             if (cost > 0) {
@@ -453,7 +340,7 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         );
 
         // check if it owner of requestID
-        require(deploymentOwners[requestID] == userAddress, "Only deployment owner can update config");
+        require(_getDeploymentOwner(requestID) == userAddress, "Only deployment owner can update config");
 
         DeploymentStatus memory deploymentStatus = DeploymentStatus({
             status: (workerAddress == dummyAddress ? Status.Issued : Status.Pickup),
@@ -497,12 +384,12 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         string memory serverURL,
         bytes memory signature
     ) public {
-        address owner = deploymentOwners[requestID];
+        address owner = _getDeploymentOwner(requestID);
         require(owner != address(0), "Invalid requestID");
 
         // get EIP712 hash digest
         bytes32 digest =
-            getRequestResetDeploymentDigest(projectId, requestID, workerAddress, base64Proposal, userNonceMp[owner]);
+            getRequestResetDeploymentDigest(projectId, requestID, workerAddress, base64Proposal, _getUserNonce(owner));
 
         // get signer address
         address signerAddr = getSignerAddress(digest, signature);
@@ -513,7 +400,7 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         resetDeployment(signerAddr, projectId, requestID, workerAddress, base64Proposal, serverURL);
 
         // increase nonce
-        userNonceMp[owner]++;
+        _setUserNonce(owner, _getUserNonce(owner) + 1);
     }
 
     function checkProjectIDAndRequestID(bytes32 projectId, bytes32 requestID) internal returns (bool) {
@@ -552,7 +439,7 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         requestDeploymentStatus[requestID].status = Status.GeneratedProof;
 
         // save deployment proof to mapping
-        deploymentProof[requestID] = proofBase64;
+        _setDeploymentProof(requestID, proofBase64);
 
         emit GeneratedProofOfDeployment(projectId, requestID, proofBase64);
     }
@@ -597,7 +484,7 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         require(requestDeploymentStatus[requestID].status != Status.Issued, "requestID is not picked up by any worker");
 
         // check if it owner of requestID
-        require(deploymentOwners[requestID] == userAddress, "Only deployment owner can update config");
+        require(_getDeploymentOwner(requestID) == userAddress, "Only deployment owner can update config");
 
         // check tokenAddress is valid and must be in paymentOpCostMp
         require(paymentAddressEnableMp[tokenAddress], "Invalid token address");
@@ -646,12 +533,12 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         string memory updatedBase64Config,
         bytes memory signature
     ) public payable {
-        address owner = deploymentOwners[requestID];
+        address owner = _getDeploymentOwner(requestID);
         require(owner != address(0), "Invalid requestID");
 
         // get EIP712 hash digest
         bytes32 digest =
-            getUpdateWorkerConfigDigest(tokenAddress, projectId, requestID, updatedBase64Config, userNonceMp[owner]);
+            getUpdateWorkerConfigDigest(tokenAddress, projectId, requestID, updatedBase64Config, _getUserNonce(owner));
 
         // get signer address
         address signerAddr = getSignerAddress(digest, signature);
@@ -661,7 +548,7 @@ contract BlueprintCore is Initializable, EIP712, Payment {
 
         updateWorkerDeploymentConfigCommon(tokenAddress, signerAddr, projectId, requestID, updatedBase64Config);
 
-        userNonceMp[owner]++;
+        _setUserNonce(owner, _getUserNonce(owner) + 1);
     }
 
     // set worker public key
@@ -670,30 +557,31 @@ contract BlueprintCore is Initializable, EIP712, Payment {
 
         // not set length check like 64 or 33 or others
         // will introduce some admin function to control workers
-        if (workersPublicKey[msg.sender].length == 0) {
-            workerAddressesMp[WORKER_ADDRESS_KEY].push(msg.sender);
+        if (_getWorkersPublicKey(msg.sender).length == 0) {
+            _pushWorkerAddressMp(msg.sender);
         }
 
-        workersPublicKey[msg.sender] = publicKey;
+        _setWorkersPublicKey(msg.sender, publicKey);
     }
 
     // get worker public key
     function getWorkerPublicKey(address workerAddress) external view returns (bytes memory publicKey) {
-        publicKey = workersPublicKey[workerAddress];
+        publicKey = _getWorkersPublicKey(workerAddress);
     }
 
     // get list of worker addresses
     function getWorkerAddresses() public view returns (address[] memory) {
-        return workerAddressesMp[WORKER_ADDRESS_KEY];
+        return _getWorkerAddressesMp();
     }
 
     // reset previous unclean workers
     function resetWorkerAddresses() internal {
-        address[] memory addrs = getWorkerAddresses();
-        for (uint256 i = 0; i < addrs.length; i++) {
-            delete workersPublicKey[addrs[i]];
+        address[] memory adders = _getWorkerAddressesMp();
+        for (uint256 i = 0; i < adders.length; i++) {
+            _deleteWorkersPublicKey(adders[i]);
         }
-        delete workerAddressesMp[WORKER_ADDRESS_KEY];
+
+        _deleteWorkerAddressesMp();
     }
 
     // get list of payment addresses
@@ -718,13 +606,14 @@ contract BlueprintCore is Initializable, EIP712, Payment {
         hasProjectNew(projectId)
         returns (address, bytes32, bytes32[] memory)
     {
-        bytes32[] memory requestDeploymentIDs = deploymentIdList[projects[projectId].requestDeploymentID];
-
-        return (projects[projectId].proposedSolverAddr, projects[projectId].requestProposalID, requestDeploymentIDs);
+        (, bytes32 requestProposalID, bytes32 requestDeploymentID, address proposedSolverAddr) =
+            _getProjectInfo(projectId);
+        bytes32[] memory requestDeploymentIDs = deploymentIdList[requestDeploymentID];
+        return (proposedSolverAddr, requestProposalID, requestDeploymentIDs);
     }
 
     function getDeploymentProof(bytes32 requestID) public view returns (string memory) {
-        return deploymentProof[requestID];
+        return _getDeploymentProof(requestID);
     }
 
     function getEIP712ContractAddress() public view returns (address) {
@@ -734,14 +623,8 @@ contract BlueprintCore is Initializable, EIP712, Payment {
     // it is ok to expose public function to get user nonce
     // since the signature with nonce is only used for one time
     // reason make userAddress as param is that gasless flow, user can get nonce with other wallet address, not need msg.sender
-
     function getUserNonce(address userAddress) public view returns (uint256) {
-        return userNonceMp[userAddress];
-    }
-
-    // need a get function to get copy agent fee since it is private mapping
-    function getDeploymentOwner(bytes32 agentRequestID) external view returns (address) {
-        return deploymentOwners[agentRequestID];
+        return _getUserNonce(userAddress);
     }
 
     // get latest deployment status
