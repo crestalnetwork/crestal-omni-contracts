@@ -70,7 +70,6 @@ contract RouterV1Test is Test {
         BlueprintV7 blueprintV7 = new BlueprintV7();
         proxy.upgradeToAndCall(address(blueprintV7), abi.encodeWithSignature("initialize()"));
 
-
         BlueprintV7 blueprintAdmin = BlueprintV7(address(proxy));
         // do some setting before convert into router proxy
         // Deploy and mint ERC20 token

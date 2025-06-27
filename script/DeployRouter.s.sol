@@ -56,7 +56,7 @@ contract DeployScript is Script {
         router.setBlueprint(address(blueprint));
 
         address owner = OwnableUpgradeable(address(proxy)).owner();
-        console.log("Proxy Owner:", owner,"admin address",address(this));
+        console.log("Proxy Owner:", owner, "admin address", address(this));
 
         // set newBlueprint admin
         router.setBlueprintAdmin(owner);

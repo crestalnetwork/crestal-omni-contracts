@@ -303,6 +303,5 @@ contract BlueprintTestUpgrade is Test {
         // check latest project id via router proxy
         latestProjId = iRouter.getLatestUserProjectID(address(this));
         assertEq(projIdV7, latestProjId);
-
     }
 }
