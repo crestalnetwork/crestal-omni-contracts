@@ -10,6 +10,14 @@ import {BlueprintV3} from "../src/BlueprintV3.sol";
 import {BlueprintV4} from "../src/BlueprintV4.sol";
 import {BlueprintV5} from "../src/BlueprintV5.sol";
 import {BlueprintV6} from "../src/BlueprintV6.sol";
+import {BlueprintV7} from "../src/BlueprintV7.sol";
+import {RouterV1} from "../src/RouterV1.sol";
+import {IRouterV1} from "../src/IRouter.sol";
+
+interface IERC1967 {
+    function upgradeTo(address newImplementation) external;
+    function upgradeToAndCall(address newImplementation, bytes calldata data) external payable;
+}
 
 contract BlueprintTestUpgrade is Test {
     BlueprintV1 public proxy;
@@ -257,5 +265,43 @@ contract BlueprintTestUpgrade is Test {
         // get latest project id
         latestProjId = proxy.getLatestUserProjectID(address(this));
         assertEq(projIdV6, latestProjId);
+    }
+
+    function test_UpgradeV7() public {
+        test_UpgradeV6();
+        // upgrade into V7
+        BlueprintV7 blueprintV7 = new BlueprintV7();
+        proxy.upgradeToAndCall(address(blueprintV7), abi.encodeWithSignature("initialize()"));
+
+        string memory ver = proxy.VERSION();
+        assertEq(ver, "7.0.0");
+        // get v6 project id
+        bytes32 latestProjId = proxy.getLatestUserProjectID(address(this));
+        assertEq(projIdV6, latestProjId);
+
+        // create new deployment
+        bytes32 projIdV7 = bytes32(0x2723a34e38d0f0aa09ce626f00aa23c0464b52c75516cf3203cc4c9afeaf2987);
+        BlueprintV7(address(proxy)).createProjectIDAndDeploymentRequest(projIdV7, "base64", "test server url");
+        // get latest project id
+        latestProjId = proxy.getLatestUserProjectID(address(this));
+        assertEq(projIdV7, latestProjId);
+
+        // upgrade to router
+        // tell the proxy to point to router implementation
+        RouterV1 routerImpl = new RouterV1();
+        IERC1967(address(proxy)).upgradeToAndCall(address(routerImpl), "");
+        RouterV1 router = RouterV1(payable(address(proxy)));
+
+        router.setBlueprint(address(blueprintV7));
+
+        IRouterV1 iRouter = IRouterV1(address(router));
+
+        // check router version
+        string memory routerVer = router.VERSION();
+        assertEq(routerVer, "7.0.0");
+
+        // check latest project id via router proxy
+        latestProjId = iRouter.getLatestUserProjectID(address(this));
+        assertEq(projIdV7, latestProjId);
     }
 }

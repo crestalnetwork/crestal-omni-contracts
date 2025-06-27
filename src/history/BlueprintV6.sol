@@ -3,10 +3,9 @@ pragma solidity ^0.8.26;
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "./BlueprintCore.sol";
+import "./BlueprintCoreV6.sol";
 
-contract Blueprint is Initializable, UUPSUpgradeable, OwnableUpgradeable, BlueprintCore {
+contract Blueprint is Initializable, OwnableUpgradeable, BlueprintCore {
     event PaymentAddressAdded(address paymentAddress);
     event CreateAgentTokenCost(address paymentAddress, uint256 cost);
     event UpdateAgentTokenCost(address paymentAddress, uint256 cost);
@@ -15,9 +14,6 @@ contract Blueprint is Initializable, UUPSUpgradeable, OwnableUpgradeable, Bluepr
     event SetWorkerAdmin(address workerAdmin);
     event UpdateWorker(address workerAddress, bool isTrusted);
     event CreditReward(address indexed userAddress, uint256 amount);
-    event SetGlobalPlatformFee(uint256 baseFee, address paymentAddress);
-    event SetAdminContract(address agentContract);
-    event RemoveAdminContract(address agentContract);
 
     modifier isAdmin() {
         // slither-disable-next-line timestamp
@@ -28,16 +24,11 @@ contract Blueprint is Initializable, UUPSUpgradeable, OwnableUpgradeable, Bluepr
     // slither-disable-start naming-convention
     /// @custom:oz-upgrades-validate-as-initializer
     function __Blueprint_init(string memory name, string memory version) internal onlyInitializing {
-        __UUPSUpgradeable_init();
         __Ownable_init(msg.sender);
         __BlueprintCore_init(name, version);
         // any Blueprint-specific setup
     }
-
     // slither-disable-end naming-convention
-
-    // The _authorizeUpgrade function is required by the UUPSUpgradeable contract
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     // slither-disable-next-line naming-convention
     function setNFTContractAddress(address _nftContractAddress) public onlyOwner {
@@ -134,25 +125,5 @@ contract Blueprint is Initializable, UUPSUpgradeable, OwnableUpgradeable, Bluepr
         require(amount > 0, "Amount should be greater than zero");
 
         emit CreditReward(userAddress, amount);
-    }
-
-    function setAdminContract(address _adminContract) public onlyOwner {
-        require(_adminContract != address(0), "Admin contract address is invalid");
-        adminContracts[_adminContract] = true;
-        emit SetAdminContract(_adminContract);
-    }
-
-    function removeAdminContract(address _adminContract) public onlyOwner {
-        require(_adminContract != address(0), "Admin contract address is invalid");
-        delete adminContracts[_adminContract];
-        emit RemoveAdminContract(_adminContract);
-    }
-
-    // nation token fee is a global fee that applies to all agents
-    function setGlobalPlatformFee(uint256 baseFee, address paymentAddress) public isAdmin {
-        // base factor should be greater or equal than 10
-        require(paymentAddressEnableMp[paymentAddress], "Payment Address is not added");
-        platformFee[paymentAddress] = baseFee;
-        emit SetGlobalPlatformFee(baseFee, paymentAddress);
     }
 }

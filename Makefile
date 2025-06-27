@@ -14,6 +14,12 @@ abi:
 deploy:
 	forge script ./script/Deploy.s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
 
+deploy-router:
+	PROXY_ADDRESS=$(PROXY_ADDRESS) forge script ./script/DeployRouter.s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
+
+upgrade-router:
+	PROXY_ADDRESS=$(PROXY_ADDRESS) forge script ./script/UpgradeRouter.s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
+
 upgrade:
 	PROXY_ADDRESS=$(PROXY_ADDRESS) forge script ./script/Upgrade$(UPGRADE_TO).s.sol --rpc-url $(RPC_URL) --broadcast --private-key $(PRIVATE_KEY)
 
@@ -34,6 +40,7 @@ verify-impl:
 
 verify-proxy:
 	FOUNDRY_PROFILE=verify ETHERSCAN_API_KEY=$(ETHERSCAN_API_KEY) forge verify-contract --verifier-url $(VERIFIER_URL) --watch $(PROXY_ADDRESS) lib/openzeppelin-contracts-upgradeable/lib/openzeppelin-contracts/contracts/proxy/ERC1967/ERC1967Proxy.sol:ERC1967Proxy --constructor-args `cast abi-encode "constructor(address,bytes)" $(PROXY_DEPLOY_ARG1) $(PROXY_DEPLOY_ARG2)`
+
 
 check:
 	cast call --rpc-url $(RPC_URL) $(PROXY_ADDRESS) "VERSION()(string)"

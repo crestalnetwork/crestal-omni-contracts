@@ -4,6 +4,9 @@ pragma solidity ^0.8.26;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 contract MockERC20 is IERC20 {
+    error InsufficientAllowance(address owner, address spender, uint256 currentAllowance, uint256 requiredAmount);
+    error InsufficientBalance(address account, uint256 balance, uint256 requiredAmount);
+
     mapping(address => uint256) private _balances;
     mapping(address => mapping(address => uint256)) private _allowances;
     uint256 private _totalSupply;
@@ -37,6 +40,10 @@ contract MockERC20 is IERC20 {
 
     function transfer(address recipient, uint256 amount) public override returns (bool) {
         require(_balances[msg.sender] >= amount, "ERC20: transfer amount exceeds balance");
+        //        uint256 bal = _balances[msg.sender];
+        //        if (bal < amount) {
+        //            revert InsufficientBalance(msg.sender, bal, amount);
+        //        }
         _balances[msg.sender] -= amount;
         _balances[recipient] += amount;
         emit Transfer(msg.sender, recipient, amount);

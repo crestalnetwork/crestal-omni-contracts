@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.26;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "./BlueprintCore.sol";
+import "./NewBlueprintCore.sol";
 
-contract Blueprint is Initializable, UUPSUpgradeable, OwnableUpgradeable, BlueprintCore {
+contract NewBlueprint is NewBlueprintCore {
+    string public version;
+
     event PaymentAddressAdded(address paymentAddress);
     event CreateAgentTokenCost(address paymentAddress, uint256 cost);
     event UpdateAgentTokenCost(address paymentAddress, uint256 cost);
@@ -19,25 +18,21 @@ contract Blueprint is Initializable, UUPSUpgradeable, OwnableUpgradeable, Bluepr
     event SetAdminContract(address agentContract);
     event RemoveAdminContract(address agentContract);
 
+    constructor(string memory _version) {
+        version = _version;
+        factor = 1000; // default factor is 1000
+    }
+
     modifier isAdmin() {
         // slither-disable-next-line timestamp
-        require(msg.sender == workerAdmin || msg.sender == owner(), "Not an admin or owner");
+        require(msg.sender == workerAdmin, "Not an admin or owner");
         _;
     }
 
-    // slither-disable-start naming-convention
-    /// @custom:oz-upgrades-validate-as-initializer
-    function __Blueprint_init(string memory name, string memory version) internal onlyInitializing {
-        __UUPSUpgradeable_init();
-        __Ownable_init(msg.sender);
-        __BlueprintCore_init(name, version);
-        // any Blueprint-specific setup
+    modifier onlyOwner() {
+        require(msg.sender == workerAdmin, "Not the contract owner");
+        _;
     }
-
-    // slither-disable-end naming-convention
-
-    // The _authorizeUpgrade function is required by the UUPSUpgradeable contract
-    function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
     // slither-disable-next-line naming-convention
     function setNFTContractAddress(address _nftContractAddress) public onlyOwner {
@@ -106,14 +101,6 @@ contract Blueprint is Initializable, UUPSUpgradeable, OwnableUpgradeable, Bluepr
         feeCollectionWalletAddress = _feeCollectionWalletAddress;
 
         emit FeeCollectionWalletAddress(_feeCollectionWalletAddress);
-    }
-
-    // slither-disable-next-line naming-convention
-    function setWorkerAdmin(address _workerAdmin) public onlyOwner {
-        require(_workerAdmin != address(0), "Worker Admin is invalid");
-        workerAdmin = _workerAdmin;
-
-        emit SetWorkerAdmin(_workerAdmin);
     }
 
     function updateWorker(address workerAddress, bool isTrusted) public isAdmin {
