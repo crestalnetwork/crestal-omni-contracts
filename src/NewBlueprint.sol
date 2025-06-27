@@ -3,9 +3,6 @@ pragma solidity ^0.8.26;
 
 import "./NewBlueprintCore.sol";
 
-// at the top of your contract
-error NotAdminOrOwner(address sender, address workerAdmin, address adminAddress);
-
 contract NewBlueprint is NewBlueprintCore {
     string public version;
 
@@ -28,10 +25,7 @@ contract NewBlueprint is NewBlueprintCore {
 
     modifier isAdmin() {
         // slither-disable-next-line timestamp
-        if (msg.sender != workerAdmin) {
-            revert NotAdminOrOwner(msg.sender, workerAdmin, workerAdmin);
-        }
-        //  require(msg.sender == workerAdmin || msg.sender == adminAddress, "Not an admin or owner");
+        require(msg.sender == workerAdmin, "Not an admin or owner");
         _;
     }
 
